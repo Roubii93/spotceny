@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blog — Život s FVE, baterií a elektromobilem | Energetika</title>
+  <meta name="description" content="Zkušenosti majitele FVE s bateriovým úložištěm a elektromobilem. Jak funguje automatická optimalizace, kolik šetříme a co jsme se naučili.">
+  <link rel="canonical" href="https://mh-energy.vercel.app/blog/">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://mh-energy.vercel.app/blog/">
+  <meta property="og:title" content="Blog — Život s FVE, baterií a elektromobilem">
+  <meta property="og:description" content="Reálné zkušenosti majitele FVE: kolik šetříme, jak funguje optimalizace ESS, nabíjení elektromobilu a spotové ceny.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Blog — Život s FVE, baterií a elektromobilem">
+  <meta name="twitter:description" content="Reálné zkušenosti majitele FVE. Bez marketingu, bez přikrášlování.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0B1120; --bg2: #0F1729; --surface: #162038; --card: #0F1729;
+      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
+      --text1: #E8EEF8; --text2: #94A3B8; --text3: #5A7099;
+      --green: #10B981; --amber: #F59E0B; --blue: #3B82F6;
+      --sans: 'Inter', system-ui, sans-serif;
+    }
+    body { font-family: var(--sans); background: var(--bg); color: var(--text1); min-height: 100vh; }
+
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px; border-bottom: 1px solid var(--border);
+      background: var(--bg2); position: sticky; top: 0; z-index: 50;
+    }
+    .topbar-logo { font-size: .95rem; font-weight: 700; color: var(--amber); text-decoration: none; }
+    .topbar-logo span { color: var(--text2); font-weight: 400; }
+    .topbar-nav { display: flex; gap: 20px; }
+    .topbar-nav a { font-size: .82rem; font-weight: 500; color: var(--text2); text-decoration: none; transition: color .15s; }
+    .topbar-nav a:hover, .topbar-nav a.active { color: var(--amber); }
+
+    .hero {
+      padding: 56px 24px 44px;
+      background: linear-gradient(160deg, #0f1e3a 0%, var(--bg) 70%);
+      border-bottom: 1px solid var(--border); text-align: center;
+    }
+    .hero-badge {
+      display: inline-block; background: rgba(245,158,11,0.1); color: var(--amber);
+      border: 1px solid rgba(245,158,11,0.25); border-radius: 999px;
+      font-size: .72rem; font-weight: 700; letter-spacing: .07em;
+      text-transform: uppercase; padding: 4px 14px; margin-bottom: 18px;
+    }
+    .hero h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800; letter-spacing: -.02em; margin-bottom: 12px; }
+    .hero h1 span { color: var(--amber); }
+    .hero p { color: var(--text2); font-size: 1rem; max-width: 520px; margin: 0 auto; }
+
+    .main { max-width: 860px; margin: 0 auto; padding: 40px 20px 60px; }
+
+    /* FEATURED */
+    .featured-label {
+      font-size: .68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .1em; color: var(--text3); margin-bottom: 16px;
+    }
+    .post-featured {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+      background: var(--card); border: 1px solid var(--border2);
+      border-radius: 18px; overflow: hidden; margin-bottom: 40px;
+      text-decoration: none; color: inherit; transition: border-color .2s;
+    }
+    .post-featured:hover { border-color: rgba(245,158,11,0.35); }
+    @media(max-width:620px) { .post-featured { grid-template-columns: 1fr; } }
+    .post-featured-img {
+      background: linear-gradient(135deg, #0f2a1a 0%, #0a1628 100%);
+      min-height: 220px; display: flex; align-items: center; justify-content: center;
+      font-size: 4rem;
+    }
+    .post-featured-body { padding: 28px; }
+    .post-tag {
+      display: inline-block; padding: 3px 10px; border-radius: 999px;
+      font-size: .65rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .tag-fve    { background: rgba(245,158,11,0.12); color: var(--amber); }
+    .tag-bat    { background: rgba(16,185,129,0.12); color: var(--green); }
+    .tag-ev     { background: rgba(139,92,246,0.12); color: #8B5CF6; }
+    .tag-tip    { background: rgba(59,130,246,0.12); color: var(--blue); }
+    .tag-ceny   { background: rgba(251,146,60,0.12); color: #FB923C; }
+    .post-featured-body h2 { font-size: 1.3rem; font-weight: 800; line-height: 1.25; margin-bottom: 10px; letter-spacing: -.01em; }
+    .post-featured-body p { font-size: .88rem; color: var(--text2); line-height: 1.6; margin-bottom: 16px; }
+    .post-meta { font-size: .72rem; color: var(--text3); }
+    .post-meta strong { color: var(--text2); }
+
+    /* GRID */
+    .posts-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
+      margin-bottom: 40px;
+    }
+    @media(max-width:560px) { .posts-grid { grid-template-columns: 1fr; } }
+    .post-card {
+      background: var(--card); border: 1px solid var(--border2);
+      border-radius: 16px; padding: 22px; text-decoration: none; color: inherit;
+      transition: border-color .2s, transform .15s; display: flex; flex-direction: column;
+    }
+    .post-card:hover { border-color: rgba(245,158,11,0.3); transform: translateY(-2px); }
+    .post-card-icon { font-size: 2rem; margin-bottom: 12px; }
+    .post-card h3 { font-size: .98rem; font-weight: 700; line-height: 1.3; margin-bottom: 8px; }
+    .post-card p { font-size: .82rem; color: var(--text2); line-height: 1.5; flex: 1; margin-bottom: 14px; }
+    .post-card-footer { display: flex; justify-content: space-between; align-items: center; }
+    .post-date { font-size: .7rem; color: var(--text3); }
+    .read-more { font-size: .72rem; font-weight: 600; color: var(--amber); }
+
+    /* NEWSLETTER */
+    .newsletter {
+      background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(59,130,246,0.06));
+      border: 1px solid rgba(16,185,129,0.18); border-radius: 18px;
+      padding: 36px; text-align: center;
+    }
+    .newsletter h3 { font-size: 1.2rem; font-weight: 800; margin-bottom: 8px; }
+    .newsletter p { color: var(--text2); font-size: .88rem; margin-bottom: 22px; }
+    .email-row { display: flex; gap: 10px; max-width: 400px; margin: 0 auto; }
+    @media(max-width:480px) { .email-row { flex-direction: column; } }
+    .email-input {
+      flex: 1; background: rgba(255,255,255,0.06); border: 1px solid var(--border2);
+      border-radius: 10px; padding: 11px 15px; color: var(--text1);
+      font-family: var(--sans); font-size: .9rem;
+    }
+    .email-input::placeholder { color: var(--text3); }
+    .btn-sub {
+      background: var(--green); color: #fff; border: none; border-radius: 10px;
+      padding: 11px 20px; font-family: var(--sans); font-size: .88rem;
+      font-weight: 700; cursor: pointer; white-space: nowrap;
+    }
+    .btn-sub:hover { background: #0ea572; }
+    .nl-note { font-size: .72rem; color: var(--text3); margin-top: 10px; }
+
+    footer {
+      border-top: 1px solid var(--border); padding: 24px;
+      text-align: center; font-size: .78rem; color: var(--text3);
+    }
+    footer a { color: var(--text2); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<nav class="topbar">
+  <a class="topbar-logo" href="/">⚡ Energetika <span>PWA</span></a>
+  <div class="topbar-nav">
+    <a href="/ceny.html">Ceny dnes</a>
+    <a href="/kalkulator.html">Kalkulačka</a>
+    <a href="/blog/" class="active">Blog</a>
+    <a href="/">Aplikace</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-badge">Blog</div>
+  <h1>Život s <span>FVE, baterií</span><br>a elektromobilem</h1>
+  <p>Reálné zkušenosti, čísla a tipy pro majitele fotovoltaiky. Bez marketingu, bez přikrášlování.</p>
+</div>
+
+<div class="main">
+
+  <!-- FEATURED -->
+  <p class="featured-label">Začněte tady</p>
+  <a class="post-featured" href="/blog/nase-fve-jak-to-cele-zacalo.html">
+    <div class="post-featured-img">☀️</div>
+    <div class="post-featured-body">
+      <span class="post-tag tag-fve">FVE & ESS</span>
+      <h2>Naše FVE — jak to celé začalo a co bychom dělali jinak</h2>
+      <p>10 kWp na střeše, 10 kWh baterie Victron, elektromobil v garáži. Cesta od prvního výpočtu návratnosti po první rok reálného provozu.</p>
+      <p class="post-meta"><strong>8 min čtení</strong> · Květen 2026</p>
+    </div>
+  </a>
+
+  <!-- GRID -->
+  <div class="posts-grid">
+
+    <a class="post-card" href="/blog/jak-nabijime-ev-chytre.html">
+      <div class="post-card-icon">🚗</div>
+      <span class="post-tag tag-ev">Elektromobil</span>
+      <h3>Jak nabíjíme elektromobil za zlomek ceny</h3>
+      <p>Baterie se nabijí přes noc za spotovou cenu, auto se nabíjí z přebytků. Reálné náklady na 1 000 km.</p>
+      <div class="post-card-footer">
+        <span class="post-date">Duben 2026</span>
+        <span class="read-more">Číst →</span>
+      </div>
+    </a>
+
+    <a class="post-card" href="/blog/spotova-cena-co-to-je.html">
+      <div class="post-card-icon">📊</div>
+      <span class="post-tag tag-ceny">Ceny</span>
+      <h3>Spotová cena elektřiny — co to je a proč na ní záleží</h3>
+      <p>Jednoduchý průvodce pro každého majitele FVE. Proč je spotový tarif výhodný a kdy se nevyplatí.</p>
+      <div class="post-card-footer">
+        <span class="post-date">Duben 2026</span>
+        <span class="read-more">Číst →</span>
+      </div>
+    </a>
+
+    <a class="post-card" href="/blog/baterie-jeden-rok.html">
+      <div class="post-card-icon">🔋</div>
+      <span class="post-tag tag-bat">Baterie</span>
+      <h3>Baterie Victron po roce provozu — kolik vydělala?</h3>
+      <p>Kompletní roční přehled: kolik kWh prošlo baterií, kolik jsme prodali, co by nás stálo bez optimalizace.</p>
+      <div class="post-card-footer">
+        <span class="post-date">Březen 2026</span>
+        <span class="read-more">Číst →</span>
+      </div>
+    </a>
+
+    <a class="post-card" href="/blog/node-red-automatizace.html">
+      <div class="post-card-icon">⚡</div>
+      <span class="post-tag tag-tip">Tip</span>
+      <h3>Node-RED na Cerbo GX — automatizace bez programování</h3>
+      <p>Jak jsme nastavili automatické řízení ESS přes Node-RED a co nás to stálo za čas oproti manuálnímu přepínání.</p>
+      <div class="post-card-footer">
+        <span class="post-date">Únor 2026</span>
+        <span class="read-more">Číst →</span>
+      </div>
+    </a>
+
+  </div>
+
+  <!-- NEWSLETTER -->
+  <div class="newsletter">
+    <h3>Nový článek jednou za měsíc</h3>
+    <p>Žádný spam. Jen reálné zkušenosti a čísla z provozu naší FVE.</p>
+    <div class="email-row">
+      <input type="email" class="email-input" placeholder="vas@email.cz">
+      <button class="btn-sub">Odebírat</button>
+    </div>
+    <p class="nl-note">Odhlášení jedním klikem · Osobní data nesdílíme</p>
+  </div>
+
+</div>
+
+<footer>
+  <p><a href="/">Energetika PWA</a> &nbsp;·&nbsp; <a href="/ceny.html">Ceny dnes</a> &nbsp;·&nbsp; <a href="/kalkulator.html">Kalkulačka</a></p>
+</footer>
+
+</body>
+</html>

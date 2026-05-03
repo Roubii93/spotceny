@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spotové ceny elektřiny v Evropě — dnes a zítřek | EUR/MWh</title>
+  <meta name="description" content="Aktuální spotové ceny elektřiny pro Česko, Německo, Rakousko, Polsko, Maďarsko a Francii. Hodinové ceny, min/max, graf. Data z Fraunhofer ISE.">
+  <link rel="canonical" href="https://mh-energy.vercel.app/cenySpotEU/">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://mh-energy.vercel.app/cenySpotEU/">
+  <meta property="og:title" content="Spotové ceny elektřiny v Evropě — dnes a zítřek">
+  <meta property="og:description" content="Hodinové spotové ceny pro CZ, DE, AT, PL, HU, FR. Data z Fraunhofer ISE zdarma a bez přihlášení.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Spotové ceny elektřiny v Evropě">
+  <meta name="twitter:description" content="Hodinové spotové ceny pro CZ, DE, AT, PL, HU, FR. Data z Fraunhofer ISE.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0B1120; --bg2: #0F1729; --surface: #162038; --card: #0F1729;
+      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
+      --text1: #E8EEF8; --text2: #94A3B8; --text3: #5A7099;
+      --green: #10B981; --amber: #F59E0B; --blue: #3B82F6;
+      --red: #EF4444; --orange: #FB923C;
+      --sans: 'Inter', system-ui, sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+      --lv-neg: #00F5FF; --lv-low: #10B981; --lv-mid: #F59E0B;
+      --lv-high: #FB923C; --lv-vhigh: #EF4444;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--sans); background: var(--bg); color: var(--text1); min-height: 100vh; }
+
+    /* TOPBAR */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px; border-bottom: 1px solid var(--border);
+      background: var(--bg2); position: sticky; top: 0; z-index: 50;
+    }
+    .topbar-logo { font-size: .95rem; font-weight: 700; color: var(--amber); text-decoration: none; }
+    .topbar-logo span { color: var(--text2); font-weight: 400; }
+    .topbar-nav { display: flex; gap: 20px; }
+    .topbar-nav a { font-size: .82rem; font-weight: 500; color: var(--text2); text-decoration: none; }
+    .topbar-nav a:hover, .topbar-nav a.active { color: var(--amber); }
+    @media(max-width:600px) { .topbar-nav { display: none; } }
+
+    /* HERO */
+    .hero {
+      background: linear-gradient(160deg, #0f1e3a 0%, var(--bg) 65%);
+      border-bottom: 1px solid var(--border);
+      padding: 48px 24px 36px;
+    }
+    .hero-inner { max-width: 960px; margin: 0 auto; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(16,185,129,0.1); color: var(--green);
+      border: 1px solid rgba(16,185,129,0.2); border-radius: 999px;
+      font-size: .72rem; font-weight: 700; letter-spacing: .07em;
+      text-transform: uppercase; padding: 4px 12px; margin-bottom: 16px;
+    }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
+    .hero h1 { font-size: clamp(1.6rem, 4vw, 2.5rem); font-weight: 800; letter-spacing: -.02em; margin-bottom: 10px; }
+    .hero h1 span { color: var(--amber); }
+    .hero-sub { color: var(--text2); font-size: .95rem; max-width: 560px; margin-bottom: 28px; }
+
+    /* COUNTRY SELECTOR */
+    .country-row {
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .country-btn {
+      display: flex; align-items: center; gap: 7px;
+      padding: 9px 16px; border-radius: 12px;
+      border: 1px solid var(--border2); background: var(--surface);
+      color: var(--text2); font-family: var(--sans); font-size: .85rem;
+      font-weight: 600; cursor: pointer; transition: all .15s;
+    }
+    .country-btn:hover { border-color: rgba(245,158,11,0.3); color: var(--text1); }
+    .country-btn.active {
+      background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.45);
+      color: var(--amber);
+    }
+    .country-flag { font-size: 1.15rem; line-height: 1; }
+    .country-code { font-size: .72rem; opacity: .6; }
+
+    /* MAIN */
+    .main { max-width: 960px; margin: 0 auto; padding: 28px 20px 60px; }
+
+    /* EU OVERVIEW STRIP */
+    .overview-strip {
+      display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px;
+      margin-bottom: 28px;
+    }
+    @media(max-width:700px) { .overview-strip { grid-template-columns: repeat(3, 1fr); } }
+    @media(max-width:420px) { .overview-strip { grid-template-columns: repeat(2, 1fr); } }
+    .overview-tile {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 10px; text-align: center;
+      cursor: pointer; transition: all .15s;
+    }
+    .overview-tile:hover { border-color: var(--border2); }
+    .overview-tile.active { border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.06); }
+    .ov-flag { font-size: 1.4rem; line-height: 1; margin-bottom: 4px; }
+    .ov-price { font-size: .95rem; font-weight: 800; line-height: 1; }
+    .ov-label { font-size: .62rem; color: var(--text3); margin-top: 2px; }
+    .ov-loading { color: var(--text3); font-size: .8rem; }
+
+    /* STATS */
+    .stats-strip {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+      margin-bottom: 20px;
+    }
+    @media(max-width:580px) { .stats-strip { grid-template-columns: repeat(2, 1fr); } }
+    .stat-tile {
+      background: var(--card); border: 1px solid var(--border2);
+      border-radius: 14px; padding: 16px 18px;
+    }
+    .stat-tile.current { border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.06); }
+    .stat-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text3); margin-bottom: 6px; }
+    .stat-value { font-size: 1.3rem; font-weight: 800; line-height: 1; }
+    .stat-sub   { font-size: .72rem; color: var(--text3); margin-top: 3px; }
+    .c-neg   { color: var(--lv-neg); }
+    .c-low   { color: var(--lv-low); }
+    .c-mid   { color: var(--lv-mid); }
+    .c-high  { color: var(--lv-high); }
+    .c-vhigh { color: var(--lv-vhigh); }
+    .c-amber { color: var(--amber); }
+
+    /* TABS */
+    .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+    .tabs { display: flex; gap: 4px; background: var(--surface); border-radius: 12px; padding: 4px; }
+    .tab-btn {
+      padding: 7px 18px; border-radius: 9px; border: none; cursor: pointer;
+      font-family: var(--sans); font-size: .82rem; font-weight: 600;
+      background: transparent; color: var(--text2); transition: all .15s;
+    }
+    .tab-btn.active { background: var(--card); color: var(--text1); box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+    .tab-btn:disabled { opacity: .35; cursor: default; }
+
+    /* CHART */
+    .chart-card {
+      background: var(--card); border: 1px solid var(--border2);
+      border-radius: 16px; padding: 20px; margin-bottom: 18px;
+    }
+    .chart-wrap { position: relative; height: 230px; }
+    .legend {
+      display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: .72rem; color: var(--text2); }
+    .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+    /* TABLE */
+    .table-card {
+      background: var(--card); border: 1px solid var(--border2);
+      border-radius: 16px; overflow: hidden; margin-bottom: 20px;
+    }
+    .table-head {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      flex-wrap: wrap; gap: 8px;
+    }
+    .table-title { font-size: .85rem; font-weight: 700; }
+    .filter-row { display: flex; gap: 6px; }
+    .filter-btn {
+      padding: 4px 11px; border-radius: 8px; border: 1px solid var(--border2);
+      background: transparent; color: var(--text2); font-family: var(--sans);
+      font-size: .72rem; font-weight: 600; cursor: pointer; transition: all .15s;
+    }
+    .filter-btn.active { background: var(--surface); color: var(--text1); }
+
+    .price-table { width: 100%; border-collapse: collapse; }
+    .price-table th {
+      font-size: .65rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .07em; color: var(--text3); padding: 9px 16px;
+      text-align: left; border-bottom: 1px solid var(--border);
+    }
+    .price-table td { padding: 7px 16px; font-size: .83rem; border-bottom: 1px solid var(--border); }
+    .price-table tr:last-child td { border-bottom: none; }
+    .price-table tr.row-current { background: rgba(245,158,11,0.07); }
+    .price-table tr.row-past td { opacity: .4; }
+    .time-cell { font-family: var(--mono); font-size: .78rem; color: var(--text2); white-space: nowrap; }
+    .cur-badge {
+      display: inline-block; background: rgba(245,158,11,0.15); color: var(--amber);
+      border: 1px solid rgba(245,158,11,0.3); border-radius: 999px;
+      font-size: .58rem; font-weight: 700; padding: 1px 6px; margin-left: 5px;
+      vertical-align: middle;
+    }
+    .level-pill {
+      display: inline-block; padding: 2px 8px; border-radius: 999px;
+      font-size: .62rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    }
+    .pill-negative { background: rgba(0,245,255,.1); color: var(--lv-neg); }
+    .pill-low      { background: rgba(16,185,129,.12); color: var(--lv-low); }
+    .pill-medium   { background: rgba(245,158,11,.12); color: var(--lv-mid); }
+    .pill-high     { background: rgba(251,146,60,.12); color: var(--lv-high); }
+    .pill-veryhigh { background: rgba(239,68,68,.12);  color: var(--lv-vhigh); }
+
+    /* COMPARE STRIP */
+    .compare-card {
+      background: var(--card); border: 1px solid var(--border2);
+      border-radius: 16px; padding: 20px; margin-bottom: 20px;
+    }
+    .compare-card h3 { font-size: .88rem; font-weight: 700; margin-bottom: 14px; }
+    .compare-row {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+    }
+    .compare-flag { width: 28px; font-size: 1.1rem; flex-shrink: 0; }
+    .compare-name { width: 90px; font-size: .78rem; color: var(--text2); flex-shrink: 0; }
+    .compare-bar-wrap { flex: 1; }
+    .compare-bar-track { height: 8px; background: var(--surface); border-radius: 999px; overflow: hidden; }
+    .compare-bar-fill  { height: 100%; border-radius: 999px; transition: width .5s ease; }
+    .compare-val { width: 80px; text-align: right; font-size: .82rem; font-weight: 700; flex-shrink: 0; }
+
+    /* ACTION ROW */
+    .action-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 18px; border-radius: 10px; border: none;
+      font-family: var(--sans); font-size: .82rem; font-weight: 700;
+      cursor: pointer; white-space: nowrap; transition: all .15s; text-decoration: none;
+    }
+    .btn-outline { background: transparent; color: var(--text1); border: 1px solid var(--border2); }
+    .btn-outline:hover { background: var(--surface); }
+    .btn-amber  { background: var(--amber); color: #000; }
+    .btn-amber:hover { background: #d97706; }
+
+    /* API CARD */
+    .api-card {
+      background: var(--card); border: 1px solid var(--border2);
+      border-radius: 16px; padding: 22px; margin-bottom: 20px;
+    }
+    .api-card h3 { font-size: .95rem; font-weight: 700; margin-bottom: 6px; }
+    .api-card p  { font-size: .82rem; color: var(--text2); margin-bottom: 14px; line-height: 1.5; }
+    .api-url {
+      background: var(--surface); border: 1px solid var(--border2); border-radius: 10px;
+      padding: 10px 14px; font-family: var(--mono); font-size: .78rem; color: var(--blue);
+      overflow-x: auto; white-space: nowrap; margin-bottom: 12px;
+    }
+    .params-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap: 8px; margin-top: 12px; }
+    .param-item {
+      background: var(--surface); border-radius: 10px; padding: 10px 14px;
+      font-size: .78rem;
+    }
+    .param-item code { color: var(--blue); font-family: var(--mono); }
+    .param-item span { color: var(--text2); }
+
+    /* STATES */
+    .state-loading, .state-error {
+      text-align: center; padding: 48px 24px; color: var(--text3);
+    }
+    .state-error { color: var(--red); }
+    .spinner {
+      width: 26px; height: 26px; border: 3px solid var(--border2);
+      border-top-color: var(--amber); border-radius: 50%;
+      animation: spin .7s linear infinite; margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    footer {
+      border-top: 1px solid var(--border); padding: 24px;
+      text-align: center; font-size: .76rem; color: var(--text3);
+    }
+    footer a { color: var(--text2); text-decoration: none; }
+    footer a:hover { color: var(--text1); }
+  </style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<nav class="topbar">
+  <a class="topbar-logo" href="/">⚡ Energetika <span>PWA</span></a>
+  <div class="topbar-nav">
+    <a href="/ceny.html">CZ ceny</a>
+    <a href="/cenySpotEU/" class="active">EU ceny</a>
+    <a href="/kalkulator.html">Kalkulačka</a>
+    <a href="/blog/">Blog</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge"><div class="badge-dot"></div> Živá data · aktualizace každých 15 min</div>
+    <h1>Spotové ceny elektřiny <span>v Evropě</span></h1>
+    <p class="hero-sub">Hodinové ceny z burzy pro 6 zemí — dnes i zítřek. Data z Fraunhofer ISE, bez registrace, volně ke stažení jako JSON.</p>
+
+    <!-- COUNTRY SELECTOR -->
+    <div class="country-row">
+      <button class="country-btn active" onclick="selectCountry('cz', this)">
+        <span class="country-flag">🇨🇿</span> Česko <span class="country-code">CZ</span>
+      </button>
+      <button class="country-btn" onclick="selectCountry('de', this)">
+        <span class="country-flag">🇩🇪</span> Německo <span class="country-code">DE</span>
+      </button>
+      <button class="country-btn" onclick="selectCountry('at', this)">
+        <span class="country-flag">🇦🇹</span> Rakousko <span class="country-code">AT</span>
+      </button>
+      <button class="country-btn" onclick="selectCountry('pl', this)">
+        <span class="country-flag">🇵🇱</span> Polsko <span class="country-code">PL</span>
+      </button>
+      <button class="country-btn" onclick="selectCountry('hu', this)">
+        <span class="country-flag">🇭🇺</span> Maďarsko <span class="country-code">HU</span>
+      </button>
+      <button class="country-btn" onclick="selectCountry('fr', this)">
+        <span class="country-flag">🇫🇷</span> Francie <span class="country-code">FR</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- EU OVERVIEW -->
+  <div class="overview-strip" id="eu-overview">
+    <div class="overview-tile active" onclick="selectCountry('cz', null)" id="ov-cz"><div class="ov-flag">🇨🇿</div><div class="ov-price ov-loading" id="ov-price-cz">…</div><div class="ov-label">CZ · EUR/MWh</div></div>
+    <div class="overview-tile" onclick="selectCountry('de', null)" id="ov-de"><div class="ov-flag">🇩🇪</div><div class="ov-price ov-loading" id="ov-price-de">…</div><div class="ov-label">DE · EUR/MWh</div></div>
+    <div class="overview-tile" onclick="selectCountry('at', null)" id="ov-at"><div class="ov-flag">🇦🇹</div><div class="ov-price ov-loading" id="ov-price-at">…</div><div class="ov-label">AT · EUR/MWh</div></div>
+    <div class="overview-tile" onclick="selectCountry('pl', null)" id="ov-pl"><div class="ov-flag">🇵🇱</div><div class="ov-price ov-loading" id="ov-price-pl">…</div><div class="ov-label">PL · EUR/MWh</div></div>
+    <div class="overview-tile" onclick="selectCountry('hu', null)" id="ov-hu"><div class="ov-flag">🇭🇺</div><div class="ov-price ov-loading" id="ov-price-hu">…</div><div class="ov-label">HU · EUR/MWh</div></div>
+    <div class="overview-tile" onclick="selectCountry('fr', null)" id="ov-fr"><div class="ov-flag">🇫🇷</div><div class="ov-price ov-loading" id="ov-price-fr">…</div><div class="ov-label">FR · EUR/MWh</div></div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-strip">
+    <div class="stat-tile current">
+      <p class="stat-label">Teď</p>
+      <p class="stat-value c-amber" id="s-now">—</p>
+      <p class="stat-sub" id="s-now-sub">EUR/MWh</p>
+    </div>
+    <div class="stat-tile">
+      <p class="stat-label">Minimum dnes</p>
+      <p class="stat-value c-low" id="s-min">—</p>
+      <p class="stat-sub" id="s-min-time">—</p>
+    </div>
+    <div class="stat-tile">
+      <p class="stat-label">Maximum dnes</p>
+      <p class="stat-value c-vhigh" id="s-max">—</p>
+      <p class="stat-sub" id="s-max-time">—</p>
+    </div>
+    <div class="stat-tile">
+      <p class="stat-label">Průměr dnes</p>
+      <p class="stat-value" id="s-avg">—</p>
+      <p class="stat-sub">EUR/MWh</p>
+    </div>
+  </div>
+
+  <!-- CHART + TABLE TABS -->
+  <div class="section-head">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchDay('today', this)">Dnes</button>
+      <button class="tab-btn" id="tab-tmr" onclick="switchDay('tomorrow', this)" disabled>Zítřek</button>
+    </div>
+    <div class="filter-row">
+      <button class="filter-btn active" onclick="setFilter('all',this)">Vše</button>
+      <button class="filter-btn" onclick="setFilter('future',this)">Zbývající</button>
+      <button class="filter-btn" onclick="setFilter('high',this)">Drahé</button>
+    </div>
+  </div>
+
+  <!-- CHART -->
+  <div class="chart-card">
+    <div class="chart-wrap"><canvas id="price-chart"></canvas></div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--lv-neg)"></div> Záporná</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--lv-low)"></div> Nízká &lt;40</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--lv-mid)"></div> Střední &lt;100</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--lv-high)"></div> Vysoká &lt;140</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--lv-vhigh)"></div> Velmi vysoká</div>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="table-card">
+    <div class="table-head">
+      <span class="table-title" id="table-title">Hodinové ceny</span>
+    </div>
+    <div id="table-wrap"><div class="state-loading"><div class="spinner"></div>Načítám…</div></div>
+  </div>
+
+  <!-- ACTION ROW -->
+  <div class="action-row">
+    <button class="btn btn-amber" onclick="downloadJson()">⬇ Stáhnout JSON</button>
+    <button class="btn btn-outline" onclick="copyApiUrl()">🔗 Kopírovat API URL</button>
+    <a class="btn btn-outline" href="/ceny.html">🇨🇿 CZ detail (Kč)</a>
+  </div>
+
+  <!-- POROVNÁNÍ -->
+  <div class="compare-card">
+    <h3>Porovnání zemí — aktuální cena</h3>
+    <div id="compare-rows">
+      <div class="state-loading" style="padding:24px"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- API -->
+  <div class="api-card">
+    <h3>Volné API — použijte ve svých projektech</h3>
+    <p>JSON endpoint bez autentizace. Podporuje Home Assistant, Node-RED, Python, Excel. Data z Fraunhofer ISE (Energy-Charts).</p>
+    <div class="api-url" id="api-url-display">/api/eu-prices?country=cz</div>
+    <div class="params-grid">
+      <div class="param-item"><code>?country=</code> <span>cz · de · at · pl · hu · fr</span></div>
+      <div class="param-item"><code>today</code> <span>pole slotů pro dnešek</span></div>
+      <div class="param-item"><code>tomorrow</code> <span>zítřejší ceny (~14:00+)</span></div>
+      <div class="param-item"><code>today_stats</code> <span>min / max / průměr</span></div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <p>Data: <a href="https://energy-charts.info" target="_blank">Energy-Charts.info</a> (Fraunhofer ISE) · Kurz CZK: <a href="https://cnb.cz" target="_blank">ČNB</a> · <a href="/ceny.html">CZ detail</a> · <a href="/kalkulator.html">Kalkulačka</a></p>
+</footer>
+
+<script>
+  // ── STATE ───────────────────────────────────────────────────
+  const API_BASE = (location.port === '3000') ? 'http://localhost:3002' : '';
+  const API_URL  = API_BASE + '/api/eu-prices';
+
+  let countryData = {};   // cache per country
+  let activeCountry = 'cz';
+  let activeDay     = 'today';
+  let rowFilter     = 'all';
+  let chart         = null;
+  let overviewLoaded = false;
+
+  const COUNTRIES = {
+    cz: { flag:'🇨🇿', name:'Česko' },
+    de: { flag:'🇩🇪', name:'Německo' },
+    at: { flag:'🇦🇹', name:'Rakousko' },
+    pl: { flag:'🇵🇱', name:'Polsko' },
+    hu: { flag:'🇭🇺', name:'Maďarsko' },
+    fr: { flag:'🇫🇷', name:'Francie' },
+  };
+
+  // ── COLORS ─────────────────────────────────────────────────
+  function levelColor(l) {
+    return {negative:'#00F5FF',low:'#10B981',medium:'#F59E0B',high:'#FB923C',veryhigh:'#EF4444'}[l]||'#F59E0B';
+  }
+  function levelLabel(l) {
+    return {negative:'Záporná',low:'Nízká',medium:'Střední',high:'Vysoká',veryhigh:'Velmi vysoká'}[l]||l;
+  }
+  function pillClass(l) {
+    return {negative:'pill-negative',low:'pill-low',medium:'pill-medium',high:'pill-high',veryhigh:'pill-veryhigh'}[l]||'pill-medium';
+  }
+  function levelClass(l) {
+    return {negative:'c-neg',low:'c-low',medium:'c-mid',high:'c-high',veryhigh:'c-vhigh'}[l]||'';
+  }
+
+  const fmtEur = v => v != null ? (v > 0 ? '+' : '') + v.toFixed(1) + ' €' : '—';
+  const fmtEurPlain = v => v != null ? v.toFixed(1) + ' €/MWh' : '—';
+
+  // ── FETCH ──────────────────────────────────────────────────
+  async function fetchCountry(code) {
+    if (countryData[code]) return countryData[code];
+    const r = await fetch(`${API_URL}?country=${code}&d=${new Date().toISOString().slice(0,10)}`);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    countryData[code] = d;
+    return d;
+  }
+
+  // ── SELECT COUNTRY ─────────────────────────────────────────
+  async function selectCountry(code, btn) {
+    activeCountry = code;
+    activeDay = 'today';
+
+    // Update hero buttons
+    document.querySelectorAll('.country-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    else {
+      document.querySelectorAll('.country-btn').forEach(b => {
+        if (b.textContent.includes(code.toUpperCase())) b.classList.add('active');
+      });
+    }
+
+    // Update overview tiles
+    document.querySelectorAll('.overview-tile').forEach(t => t.classList.remove('active'));
+    const ovTile = document.getElementById('ov-' + code);
+    if (ovTile) ovTile.classList.add('active');
+
+    // Update day tab
+    const tmrBtn = document.getElementById('tab-tmr');
+    tmrBtn.disabled = true;
+    tmrBtn.textContent = 'Zítřek';
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.tab-btn').classList.add('active');
+
+    // Update API url display
+    const apiOrigin = (location.port === '3000') ? 'http://localhost:3002' : location.origin;
+    document.getElementById('api-url-display').textContent =
+      apiOrigin + `/api/eu-prices?country=${code}`;
+
+    document.getElementById('table-wrap').innerHTML =
+      '<div class="state-loading"><div class="spinner"></div>Načítám…</div>';
+
+    try {
+      const data = await fetchCountry(code);
+      renderCountry(data);
+    } catch(e) {
+      document.getElementById('table-wrap').innerHTML =
+        `<div class="state-error">⚠ Nepodařilo se načíst: ${e.message}</div>`;
+    }
+  }
+
+  // ── RENDER COUNTRY ─────────────────────────────────────────
+  function renderCountry(data) {
+    const slots = activeDay === 'today' ? data.today : data.tomorrow;
+    const stats = activeDay === 'today' ? data.today_stats : data.tomorrow_stats;
+
+    // Tomorrow tab
+    const tmrBtn = document.getElementById('tab-tmr');
+    tmrBtn.disabled = !data.tomorrow_available;
+    tmrBtn.textContent = data.tomorrow_available ? 'Zítřek' : 'Zítřek (~14:00)';
+
+    // Stats
+    const cur = slots.find(s => s.current);
+    const setS = (id, v, cls) => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = v; if (cls) el.className = 'stat-value ' + cls; }
+    };
+    setS('s-now', cur ? cur.price_eur.toFixed(1) + ' €/MWh' : '—', cur ? levelClass(cur.level) : 'c-amber');
+    document.getElementById('s-now-sub').textContent = cur ? 'hodina ' + cur.time : 'mimo dnešek';
+
+    if (stats) {
+      setS('s-min', stats.min.price_eur.toFixed(1) + ' €/MWh', 'c-low');
+      document.getElementById('s-min-time').textContent = 'v ' + stats.min.time;
+      setS('s-max', stats.max.price_eur.toFixed(1) + ' €/MWh', 'c-vhigh');
+      document.getElementById('s-max-time').textContent = 'v ' + stats.max.time;
+      setS('s-avg', stats.avg_eur.toFixed(1) + ' €/MWh', '');
+    }
+
+    document.getElementById('table-title').textContent =
+      `${COUNTRIES[activeCountry]?.flag} ${COUNTRIES[activeCountry]?.name} — hodinové ceny`;
+
+    renderChart(slots);
+    renderTable(slots, data);
+    renderCompare();
+  }
+
+  // ── CHART ──────────────────────────────────────────────────
+  function renderChart(slots) {
+    const colors  = slots.map(s => levelColor(s.level) + (s.current ? 'ff' : 'bb'));
+    const borders = slots.map(s => s.current ? '#F59E0B' : levelColor(s.level));
+    const bw      = slots.map(s => s.current ? 2 : 0);
+
+    const ctx = document.getElementById('price-chart').getContext('2d');
+    if (chart) chart.destroy();
+    chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: slots.map(s => s.time),
+        datasets: [{ data: slots.map(s => s.price_eur), backgroundColor: colors,
+          borderColor: borders, borderWidth: bw, borderRadius: 4 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(10,14,22,.95)', titleColor: '#E8EEF8',
+            bodyColor: '#94A3B8', borderColor: 'rgba(255,255,255,.1)', borderWidth: 1,
+            callbacks: {
+              title: i => i[0].label,
+              label: i => ` ${i.raw.toFixed(2)} €/MWh`,
+            }
+          }
+        },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#5A7099', font: { size: 9 }, maxRotation: 0,
+            callback: (v, i) => i % 4 === 0 ? slots[i]?.time : '' } },
+          y: { grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#5A7099', font: { size: 9 },
+            callback: v => v + ' €' } }
+        }
+      }
+    });
+  }
+
+  // ── TABLE ──────────────────────────────────────────────────
+  function renderTable(slots, data) {
+    const curH = new Date().getHours();
+
+    let filtered = slots;
+    if (rowFilter === 'future') filtered = slots.filter(s => s.hour >= curH);
+    else if (rowFilter === 'high') filtered = slots.filter(s => s.level === 'high' || s.level === 'veryhigh');
+
+    if (!filtered.length) {
+      document.getElementById('table-wrap').innerHTML =
+        '<div style="padding:28px;text-align:center;color:var(--text3)">Žádné záznamy.</div>';
+      return;
+    }
+
+    const hasCzk = data.currency === 'CZK';
+    const isPast = s => activeDay === 'today' && s.hour < curH;
+
+    const rows = filtered.map(s => `
+      <tr class="${s.current ? 'row-current' : isPast(s) ? 'row-past' : ''}">
+        <td class="time-cell">${s.time}${s.current ? '<span class="cur-badge">TEĎ</span>' : ''}</td>
+        <td style="font-weight:700" class="${levelClass(s.level)}">${s.price_eur.toFixed(2)}</td>
+        ${hasCzk ? `<td style="color:var(--text2);font-size:.78rem">${s.price_czk ? s.price_czk.toLocaleString('cs-CZ') + ' Kč/MWh' : '—'}</td>` : ''}
+        <td><span class="level-pill ${pillClass(s.level)}">${levelLabel(s.level)}</span></td>
+      </tr>`).join('');
+
+    document.getElementById('table-wrap').innerHTML = `
+      <table class="price-table">
+        <thead><tr>
+          <th>Hodina</th>
+          <th>EUR/MWh</th>
+          ${hasCzk ? '<th>CZK/MWh</th>' : ''}
+          <th>Hladina</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  // ── COMPARE ────────────────────────────────────────────────
+  async function renderCompare() {
+    const codes = Object.keys(COUNTRIES);
+    const prices = {};
+
+    // Fetch all in parallel
+    await Promise.allSettled(codes.map(async c => {
+      try {
+        const d = await fetchCountry(c);
+        const cur = d.today.find(s => s.current) || d.today[d.today.length - 1];
+        if (cur) prices[c] = { price: cur.price_eur, level: cur.level };
+      } catch {}
+    }));
+
+    const vals = Object.values(prices).map(p => p.price).filter(p => p != null);
+    if (!vals.length) return;
+    const maxVal = Math.max(...vals);
+
+    const html = codes.map(c => {
+      const p = prices[c];
+      if (!p) return '';
+      const pct = Math.max(4, (p.price / maxVal) * 100);
+      return `
+        <div class="compare-row">
+          <div class="compare-flag">${COUNTRIES[c].flag}</div>
+          <div class="compare-name">${COUNTRIES[c].name}</div>
+          <div class="compare-bar-wrap">
+            <div class="compare-bar-track">
+              <div class="compare-bar-fill" style="width:${pct.toFixed(1)}%;background:${levelColor(p.level)}"></div>
+            </div>
+          </div>
+          <div class="compare-val ${levelClass(p.level)}">${p.price.toFixed(1)} €</div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('compare-rows').innerHTML = html || '<p style="color:var(--text3);font-size:.85rem;padding:8px">Data se načítají…</p>';
+
+    // Update overview prices
+    codes.forEach(c => {
+      const el = document.getElementById('ov-price-' + c);
+      if (el && prices[c]) {
+        el.textContent = prices[c].price.toFixed(1) + ' €';
+        el.className   = 'ov-price ' + levelClass(prices[c].level);
+      }
+    });
+  }
+
+  // ── TABS & FILTER ──────────────────────────────────────────
+  function switchDay(day, btn) {
+    activeDay = day;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const data = countryData[activeCountry];
+    if (data) renderCountry(data);
+  }
+
+  function setFilter(f, btn) {
+    rowFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const data = countryData[activeCountry];
+    if (data) renderTable(activeDay === 'today' ? data.today : data.tomorrow, data);
+  }
+
+  // ── DOWNLOAD ───────────────────────────────────────────────
+  function downloadJson() {
+    const data = countryData[activeCountry];
+    if (!data) return;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `spot-ceny-${data.country}-${data.date}.json`;
+    a.click();
+  }
+
+  function copyApiUrl() {
+    const url = location.origin.replace(':3000', ':3002') + `/api/eu-prices?country=${activeCountry}`;
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = event.target;
+      const o = btn.textContent;
+      btn.textContent = '✓ Zkopírováno';
+      setTimeout(() => btn.textContent = o, 1800);
+    });
+  }
+
+  // ── INIT ───────────────────────────────────────────────────
+  selectCountry('cz', document.querySelector('.country-btn.active'));
+  setInterval(() => { countryData = {}; selectCountry(activeCountry, null); }, 5 * 60 * 1000);
+</script>
+</body>
+</html>

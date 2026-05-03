@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Node-RED na Cerbo GX — automatizace ESS bez programování | Blog</title>
+  <meta name="description" content="Jak jsme nastavili automatické řízení ESS přes Node-RED na Victron Cerbo GX. Flow pro spotové ceny, přebytky FVE a nabíjení elektromobilu. Zdarma ke stažení.">
+  <link rel="canonical" href="https://mh-energy.vercel.app/blog/node-red-automatizace.html">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0B1120; --bg2: #0F1729; --surface: #162038; --card: #0F1729;
+      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
+      --text1: #E8EEF8; --text2: #94A3B8; --text3: #5A7099;
+      --green: #10B981; --amber: #F59E0B; --blue: #3B82F6; --red: #EF4444;
+      --sans: 'Inter', system-ui, sans-serif;
+    }
+    body { font-family: var(--sans); background: var(--bg); color: var(--text1); min-height: 100vh; }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px; border-bottom: 1px solid var(--border);
+      background: var(--bg2); position: sticky; top: 0; z-index: 50;
+    }
+    .topbar-logo { font-size: .95rem; font-weight: 700; color: var(--amber); text-decoration: none; }
+    .topbar-logo span { color: var(--text2); font-weight: 400; }
+    .topbar-nav { display: flex; gap: 20px; }
+    .topbar-nav a { font-size: .82rem; font-weight: 500; color: var(--text2); text-decoration: none; }
+    .topbar-nav a:hover { color: var(--amber); }
+    @media(max-width:480px) { .topbar-nav { display: none; } }
+
+    .article-hero { max-width: 720px; margin: 0 auto; padding: 52px 24px 32px; }
+    .back-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: .8rem; font-weight: 600; color: var(--text3);
+      text-decoration: none; margin-bottom: 24px; transition: color .15s;
+    }
+    .back-link:hover { color: var(--amber); }
+    .post-tag {
+      display: inline-block; padding: 3px 10px; border-radius: 999px;
+      font-size: .65rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+      background: rgba(59,130,246,0.12); color: var(--blue); margin-bottom: 16px;
+    }
+    .article-hero h1 {
+      font-size: clamp(1.7rem, 4vw, 2.4rem); font-weight: 800;
+      line-height: 1.2; letter-spacing: -.02em; margin-bottom: 16px;
+    }
+    .article-meta {
+      display: flex; gap: 20px; align-items: center; flex-wrap: wrap;
+      padding-bottom: 24px; border-bottom: 1px solid var(--border);
+    }
+    .meta-author { display: flex; align-items: center; gap: 8px; }
+    .author-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--amber), var(--green));
+      display: flex; align-items: center; justify-content: center;
+      font-size: .85rem; font-weight: 700; color: #000;
+    }
+    .author-name { font-size: .82rem; font-weight: 600; }
+    .meta-sep { color: var(--border2); }
+    .meta-date { font-size: .78rem; color: var(--text3); }
+    .meta-read { font-size: .78rem; color: var(--text3); }
+
+    .article-body { max-width: 720px; margin: 0 auto; padding: 36px 24px 60px; }
+    .article-body p { font-size: 1.02rem; line-height: 1.8; color: var(--text2); margin-bottom: 22px; }
+    .article-body p strong { color: var(--text1); font-weight: 600; }
+    .article-body h2 {
+      font-size: 1.35rem; font-weight: 800; color: var(--text1);
+      margin: 40px 0 16px; letter-spacing: -.01em; line-height: 1.3;
+    }
+    .article-body h3 { font-size: 1.05rem; font-weight: 700; color: var(--text1); margin: 28px 0 12px; }
+    .callout {
+      background: rgba(245,158,11,0.07); border-left: 3px solid var(--amber);
+      border-radius: 0 12px 12px 0; padding: 18px 20px; margin: 28px 0;
+    }
+    .callout.green { background: rgba(16,185,129,0.07); border-color: var(--green); }
+    .callout.blue  { background: rgba(59,130,246,0.07); border-color: var(--blue); }
+    .callout p { margin: 0; font-size: .92rem; }
+    .callout p + p { margin-top: 10px; }
+    .callout-label {
+      font-size: .68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--amber); margin-bottom: 6px;
+    }
+    .callout.green .callout-label { color: var(--green); }
+    .callout.blue .callout-label { color: var(--blue); }
+
+    .flow-step {
+      display: flex; gap: 16px; margin-bottom: 20px; align-items: flex-start;
+    }
+    .step-num {
+      width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3);
+      color: var(--blue); font-size: .85rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step-body h4 { font-size: .92rem; font-weight: 700; color: var(--text1); margin-bottom: 4px; }
+    .step-body p { font-size: .85rem; color: var(--text2); margin-bottom: 0; line-height: 1.6; }
+
+    .code-block {
+      background: #060d1a; border: 1px solid var(--border2); border-radius: 12px;
+      padding: 20px; margin: 24px 0; font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: .82rem; color: #94A3B8; overflow-x: auto; line-height: 1.7;
+    }
+    .code-block .kw { color: #93C5FD; }
+    .code-block .str { color: #86EFAC; }
+    .code-block .cm { color: #475569; }
+
+    .article-cta {
+      background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(245,158,11,0.06));
+      border: 1px solid rgba(16,185,129,0.2); border-radius: 16px;
+      padding: 28px; margin: 40px 0; text-align: center;
+    }
+    .article-cta h3 { font-size: 1.05rem; font-weight: 800; margin-bottom: 8px; }
+    .article-cta p { font-size: .85rem; color: var(--text2); margin-bottom: 18px; }
+    .btn-cta {
+      display: inline-block; background: var(--amber); color: #000;
+      border-radius: 10px; padding: 11px 22px; font-weight: 700;
+      font-size: .88rem; text-decoration: none; transition: background .15s;
+    }
+    .btn-cta:hover { background: #d97706; }
+
+    .related { margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--border); }
+    .related h3 { font-size: .85rem; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 16px; }
+    .related-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    @media(max-width:500px) { .related-grid { grid-template-columns: 1fr; } }
+    .related-card {
+      background: var(--card); border: 1px solid var(--border2); border-radius: 12px;
+      padding: 16px; text-decoration: none; color: inherit; transition: border-color .15s;
+    }
+    .related-card:hover { border-color: rgba(245,158,11,0.3); }
+    .related-card h4 { font-size: .88rem; font-weight: 700; margin-bottom: 4px; line-height: 1.3; }
+    .related-card p { font-size: .75rem; color: var(--text2); margin-bottom: 0; }
+
+    footer { border-top: 1px solid var(--border); padding: 24px; text-align: center; font-size: .78rem; color: var(--text3); }
+    footer a { color: var(--text2); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<nav class="topbar">
+  <a class="topbar-logo" href="/">⚡ Energetika <span>PWA</span></a>
+  <div class="topbar-nav">
+    <a href="/ceny.html">Ceny dnes</a>
+    <a href="/kalkulator.html">Kalkulačka</a>
+    <a href="/blog/" class="active">Blog</a>
+    <a href="/">Aplikace</a>
+  </div>
+</nav>
+
+<div class="article-hero">
+  <a class="back-link" href="/blog/">← Zpět na blog</a>
+  <span class="post-tag">Tip</span>
+  <h1>Node-RED na Cerbo GX — automatizace ESS bez programování</h1>
+  <div class="article-meta">
+    <div class="meta-author">
+      <div class="author-avatar">M</div>
+      <span class="author-name">Michal</span>
+    </div>
+    <span class="meta-sep">·</span>
+    <span class="meta-date">Únor 2026</span>
+    <span class="meta-sep">·</span>
+    <span class="meta-read">9 min čtení</span>
+  </div>
+</div>
+
+<article class="article-body">
+
+  <p>Victron Cerbo GX má vestavěný Node-RED. Většina majitelů o tom neví, nebo to považuje za „složité pro programátory". Není to pravda. Node-RED je vizuální nástroj — spojujete bloky šipkami. Za odpoledne máte automatizaci, která funguje lépe než jakékoli manuální přepínání.</p>
+
+  <h2>Co je Node-RED a proč na Cerbo GX?</h2>
+
+  <p>Node-RED je open-source nástroj od IBM pro vizuální programování. Namísto psaní kódu táhnete a propojujete bloky (nodes). Cerbo GX — řídicí počítač systému Victron — ho má předinstalovaný od verze firmware 2.80.</p>
+
+  <div class="callout blue">
+    <div class="callout-label">Proč Cerbo GX + Node-RED?</div>
+    <p>Cerbo GX má přímý přístup k Victron D-Bus — systémové sběrnici kde jsou všechna data: SoC baterie, výkon FVE, síťový výkon, nastavení ESS. Node-RED umí tato data číst a zapisovat. Tím získáte plnou kontrolu nad systémem bez závislosti na cloudu nebo externích API.</p>
+  </div>
+
+  <h2>Jak zprovoznit Node-RED na Cerbo GX</h2>
+
+  <div class="flow-step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <h4>Aktualizujte firmware na 2.80+</h4>
+      <p>V VRM portálu nebo přímo na Cerbo GX (Settings → Firmware → Online updates). Node-RED je dostupný od verze 2.80.</p>
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <h4>Zapněte Node-RED v nastavení</h4>
+      <p>Settings → Venus OS Large features → Node-RED: ON. Cerbo GX se restartuje.</p>
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <h4>Otevřete Node-RED editor</h4>
+      <p>V prohlížeči přejděte na <code>http://[IP-adresa-Cerbo]:1880</code>. IP adresu najdete v Settings → Ethernet nebo WiFi. Editor se otevře v prohlížeči.</p>
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <h4>Nainstalujte node-red-contrib-victron</h4>
+      <p>Menu (hamburger) → Manage palette → Install → hledat <code>node-red-contrib-victron</code>. Tato knihovna přidá speciální nodes pro čtení a zápis D-Bus hodnot.</p>
+    </div>
+  </div>
+
+  <h2>Naše základní flow: optimalizace podle spotových cen</h2>
+
+  <p>Flow funguje takto: každou hodinu se zkontroluje aktuální spotová cena z naší API, porovná se SoC baterie a na základě toho se nastaví ESS mód (nabíjet ze sítě / vybíjet do sítě / normální provoz).</p>
+
+  <div class="callout green">
+    <div class="callout-label">Logika flow</div>
+    <p>
+      <strong>Pokud spotová cena &lt; 40 EUR/MWh AND SoC &lt; 85 %:</strong> Zapni nabíjení ze sítě (ESS mód: Keep batteries charged)<br><br>
+      <strong>Pokud spotová cena &gt; 120 EUR/MWh AND SoC &gt; 30 %:</strong> Vybíj baterii (ESS mód: Optimized with BatteryLife)<br><br>
+      <strong>Jinak:</strong> Normální provoz — baterie chrání dům od sítě
+    </p>
+  </div>
+
+  <h3>Základní HTTP request node pro stažení cen</h3>
+
+  <div class="code-block">
+<span class="cm">// Function node: připraví URL pro aktuální hodinu</span>
+<span class="kw">const</span> now = <span class="kw">new</span> Date();
+<span class="kw">const</span> hour = now.getHours();
+
+<span class="kw">const</span> url = <span class="str">`https://mh-energy.vercel.app/api/eu-prices?country=cz`</span>;
+
+msg.url = url;
+msg.payload = { hour };
+<span class="kw">return</span> msg;
+  </div>
+
+  <p>Za HTTP request node přidejte <strong>Function node</strong>, který zpracuje odpověď a najde cenu pro aktuální hodinu. Pak <strong>Switch node</strong>, který rozdělí tok podle prahů ceny. Na konci každé větve je <strong>Victron write node</strong>, který zapíše nastavení ESS.</p>
+
+  <h2>Přebytky FVE → nabíjení elektromobilu</h2>
+
+  <p>Druhé flow sleduje výkon FVE a SoC baterie. Když baterie přesáhne 90 % a FVE stále vyrábí, pošle příkaz wallboxu přes EVCC, aby začal nabíjet auto z přebytků.</p>
+
+  <div class="callout">
+    <div class="callout-label">Požadavky</div>
+    <p>Pro toto flow potřebujete wallbox kompatibilní s EVCC (seznam na evcc.io). EVCC musí běžet na síti — ideálně na Raspberry Pi nebo NAS. Node-RED pak komunikuje s EVCC přes jeho REST API.</p>
+  </div>
+
+  <h2>Kolik nás stálo nastavení oproti manuálu?</h2>
+
+  <p>Než jsme měli Node-RED flow, přepínali jsme ESS mód ručně přes VRM portál — průměrně 3–4× denně. To zabralo asi 10 minut denně = <strong>60 hodin ročně</strong>. A stejně jsme reagovali se zpožděním.</p>
+
+  <p>Nastavení Node-RED flow trvalo <strong>jedno odpoledne</strong> (cca 4 hodiny) včetně testování. Výsledek: automatizace reaguje každou hodinu, my se o nic nestaráme a úspora je vyšší než při manuálním řízení.</p>
+
+  <div class="article-cta">
+    <h3>Chcete vidět aktuální spotové ceny?</h3>
+    <p>Naše API endpoint poskytuje data z OTE-CR zdarma — přímo do vašeho Node-RED flow.</p>
+    <a class="btn-cta" href="/ceny.html">Ceny dnes →</a>
+  </div>
+
+  <div class="related">
+    <h3>Další články</h3>
+    <div class="related-grid">
+      <a class="related-card" href="/blog/nase-fve-jak-to-cele-zacalo.html">
+        <h4>Naše FVE — jak to celé začalo</h4>
+        <p>10 kWp, baterie Victron, elektromobil. Rok reálného provozu.</p>
+      </a>
+      <a class="related-card" href="/blog/baterie-jeden-rok.html">
+        <h4>Baterie Victron po roce provozu</h4>
+        <p>Kompletní roční přehled: kWh, koruny, co by stálo bez optimalizace.</p>
+      </a>
+      <a class="related-card" href="/blog/spotova-cena-co-to-je.html">
+        <h4>Spotová cena elektřiny — co to je</h4>
+        <p>Průvodce proč je spotový tarif výhodný s FVE a baterií.</p>
+      </a>
+      <a class="related-card" href="/blog/jak-nabijime-ev-chytre.html">
+        <h4>Jak nabíjíme elektromobil za zlomek ceny</h4>
+        <p>Reálné náklady: 0,8 Kč/km při kombinaci FVE + spotový tarif.</p>
+      </a>
+    </div>
+  </div>
+
+</article>
+
+<footer>
+  <p><a href="/">Energetika PWA</a> &nbsp;·&nbsp; <a href="/ceny.html">Ceny dnes</a> &nbsp;·&nbsp; <a href="/blog/">Blog</a> &nbsp;·&nbsp; <a href="/kalkulator.html">Kalkulačka</a></p>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Baterie Victron po roce provozu — kolik vydělala? | Blog</title>
+  <meta name="description" content="Kompletní roční přehled provozu baterie Victron ESS 10 kWh: kolik kWh prošlo, kolik jsme prodali, co by stálo bez optimalizace spotových cen.">
+  <link rel="canonical" href="https://mh-energy.vercel.app/blog/baterie-jeden-rok.html">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0B1120; --bg2: #0F1729; --surface: #162038; --card: #0F1729;
+      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
+      --text1: #E8EEF8; --text2: #94A3B8; --text3: #5A7099;
+      --green: #10B981; --amber: #F59E0B; --blue: #3B82F6; --red: #EF4444;
+      --sans: 'Inter', system-ui, sans-serif;
+    }
+    body { font-family: var(--sans); background: var(--bg); color: var(--text1); min-height: 100vh; }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px; border-bottom: 1px solid var(--border);
+      background: var(--bg2); position: sticky; top: 0; z-index: 50;
+    }
+    .topbar-logo { font-size: .95rem; font-weight: 700; color: var(--amber); text-decoration: none; }
+    .topbar-logo span { color: var(--text2); font-weight: 400; }
+    .topbar-nav { display: flex; gap: 20px; }
+    .topbar-nav a { font-size: .82rem; font-weight: 500; color: var(--text2); text-decoration: none; }
+    .topbar-nav a:hover { color: var(--amber); }
+    @media(max-width:480px) { .topbar-nav { display: none; } }
+
+    .article-hero { max-width: 720px; margin: 0 auto; padding: 52px 24px 32px; }
+    .back-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: .8rem; font-weight: 600; color: var(--text3);
+      text-decoration: none; margin-bottom: 24px; transition: color .15s;
+    }
+    .back-link:hover { color: var(--amber); }
+    .post-tag {
+      display: inline-block; padding: 3px 10px; border-radius: 999px;
+      font-size: .65rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+      background: rgba(16,185,129,0.12); color: var(--green); margin-bottom: 16px;
+    }
+    .article-hero h1 {
+      font-size: clamp(1.7rem, 4vw, 2.4rem); font-weight: 800;
+      line-height: 1.2; letter-spacing: -.02em; margin-bottom: 16px;
+    }
+    .article-meta {
+      display: flex; gap: 20px; align-items: center; flex-wrap: wrap;
+      padding-bottom: 24px; border-bottom: 1px solid var(--border);
+    }
+    .meta-author { display: flex; align-items: center; gap: 8px; }
+    .author-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--amber), var(--green));
+      display: flex; align-items: center; justify-content: center;
+      font-size: .85rem; font-weight: 700; color: #000;
+    }
+    .author-name { font-size: .82rem; font-weight: 600; }
+    .meta-sep { color: var(--border2); }
+    .meta-date { font-size: .78rem; color: var(--text3); }
+    .meta-read { font-size: .78rem; color: var(--text3); }
+
+    .article-body { max-width: 720px; margin: 0 auto; padding: 36px 24px 60px; }
+    .article-body p { font-size: 1.02rem; line-height: 1.8; color: var(--text2); margin-bottom: 22px; }
+    .article-body p strong { color: var(--text1); font-weight: 600; }
+    .article-body h2 {
+      font-size: 1.35rem; font-weight: 800; color: var(--text1);
+      margin: 40px 0 16px; letter-spacing: -.01em; line-height: 1.3;
+    }
+    .article-body h3 { font-size: 1.05rem; font-weight: 700; color: var(--text1); margin: 28px 0 12px; }
+    .callout {
+      background: rgba(245,158,11,0.07); border-left: 3px solid var(--amber);
+      border-radius: 0 12px 12px 0; padding: 18px 20px; margin: 28px 0;
+    }
+    .callout.green { background: rgba(16,185,129,0.07); border-color: var(--green); }
+    .callout.blue  { background: rgba(59,130,246,0.07); border-color: var(--blue); }
+    .callout p { margin: 0; font-size: .92rem; }
+    .callout-label {
+      font-size: .68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--amber); margin-bottom: 6px;
+    }
+    .callout.green .callout-label { color: var(--green); }
+    .callout.blue .callout-label { color: var(--blue); }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 28px 0; }
+    .stats-grid.four { grid-template-columns: repeat(4, 1fr); }
+    @media(max-width:600px) { .stats-grid.four { grid-template-columns: repeat(2, 1fr); } }
+    @media(max-width:500px) { .stats-grid { grid-template-columns: 1fr 1fr; } }
+    .stat-box { background: var(--card); border: 1px solid var(--border2); border-radius: 12px; padding: 16px; text-align: center; }
+    .stat-box .val { font-size: 1.4rem; font-weight: 800; color: var(--amber); line-height: 1; margin-bottom: 4px; }
+    .stat-box .val.green { color: var(--green); }
+    .stat-box .val.blue { color: var(--blue); }
+    .stat-box .val.red { color: var(--red); }
+    .stat-box .lbl { font-size: .72rem; color: var(--text3); }
+
+    .month-table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: .88rem; }
+    .month-table th { text-align: left; padding: 8px 12px; color: var(--text3); font-size: .7rem; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid var(--border2); }
+    .month-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text2); }
+    .month-table tr:last-child td { border-bottom: none; }
+    .month-table td:first-child { color: var(--text1); font-weight: 600; }
+    .bar-wrap { background: rgba(255,255,255,0.06); border-radius: 4px; height: 6px; width: 100%; margin-top: 4px; }
+    .bar-fill { background: var(--green); border-radius: 4px; height: 6px; }
+
+    .article-cta {
+      background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(245,158,11,0.06));
+      border: 1px solid rgba(16,185,129,0.2); border-radius: 16px;
+      padding: 28px; margin: 40px 0; text-align: center;
+    }
+    .article-cta h3 { font-size: 1.05rem; font-weight: 800; margin-bottom: 8px; }
+    .article-cta p { font-size: .85rem; color: var(--text2); margin-bottom: 18px; }
+    .btn-cta {
+      display: inline-block; background: var(--amber); color: #000;
+      border-radius: 10px; padding: 11px 22px; font-weight: 700;
+      font-size: .88rem; text-decoration: none; transition: background .15s;
+    }
+    .btn-cta:hover { background: #d97706; }
+
+    .related { margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--border); }
+    .related h3 { font-size: .85rem; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 16px; }
+    .related-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    @media(max-width:500px) { .related-grid { grid-template-columns: 1fr; } }
+    .related-card {
+      background: var(--card); border: 1px solid var(--border2); border-radius: 12px;
+      padding: 16px; text-decoration: none; color: inherit; transition: border-color .15s;
+    }
+    .related-card:hover { border-color: rgba(245,158,11,0.3); }
+    .related-card h4 { font-size: .88rem; font-weight: 700; margin-bottom: 4px; line-height: 1.3; }
+    .related-card p { font-size: .75rem; color: var(--text2); margin-bottom: 0; }
+
+    footer { border-top: 1px solid var(--border); padding: 24px; text-align: center; font-size: .78rem; color: var(--text3); }
+    footer a { color: var(--text2); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<nav class="topbar">
+  <a class="topbar-logo" href="/">⚡ Energetika <span>PWA</span></a>
+  <div class="topbar-nav">
+    <a href="/ceny.html">Ceny dnes</a>
+    <a href="/kalkulator.html">Kalkulačka</a>
+    <a href="/blog/" class="active">Blog</a>
+    <a href="/">Aplikace</a>
+  </div>
+</nav>
+
+<div class="article-hero">
+  <a class="back-link" href="/blog/">← Zpět na blog</a>
+  <span class="post-tag">Baterie</span>
+  <h1>Baterie Victron po roce provozu — kolik vydělala?</h1>
+  <div class="article-meta">
+    <div class="meta-author">
+      <div class="author-avatar">M</div>
+      <span class="author-name">Michal</span>
+    </div>
+    <span class="meta-sep">·</span>
+    <span class="meta-date">Březen 2026</span>
+    <span class="meta-sep">·</span>
+    <span class="meta-read">7 min čtení</span>
+  </div>
+</div>
+
+<article class="article-body">
+
+  <p>Přesně rok provozu naší baterie Victron Energy 10 kWh LiFePO4. Slíbil jsem si, že po roce udělám poctivý přehled — ne marketingový, ale reálný. Takže tady jsou čísla. Dobrá i špatná.</p>
+
+  <div class="stats-grid four">
+    <div class="stat-box">
+      <div class="val green">3 840 kWh</div>
+      <div class="lbl">prošlo baterií za rok</div>
+    </div>
+    <div class="stat-box">
+      <div class="val">1 920 kWh</div>
+      <div class="lbl">nabito ze sítě (spot)</div>
+    </div>
+    <div class="stat-box">
+      <div class="val blue">1 920 kWh</div>
+      <div class="lbl">nabito z FVE přebytků</div>
+    </div>
+    <div class="stat-box">
+      <div class="val amber">24 680 Kč</div>
+      <div class="lbl">odhadovaná úspora</div>
+    </div>
+  </div>
+
+  <h2>Jak počítáme úsporu?</h2>
+
+  <p>Úsporu počítáme jako <strong>rozdíl mezi cenou, kterou bychom zaplatili bez optimalizace, a cenou, kterou jsme skutečně zaplatili</strong>. Bez baterie a spotového tarifu bychom platili fixní tarif ~ 6,5 Kč/kWh po celý rok. Se systémem platíme průměrně 2,1 Kč/kWh za energii ze sítě (díky nabíjení v levných hodinách).</p>
+
+  <div class="callout green">
+    <div class="callout-label">Výpočet</div>
+    <p>
+      Energie odebraná ze sítě za rok: <strong>~4 200 kWh</strong><br>
+      Průměrná cena bez optimalizace: 6,5 Kč/kWh → <strong>27 300 Kč</strong><br>
+      Průměrná cena s optimalizací: 2,7 Kč/kWh → <strong>11 340 Kč</strong><br>
+      <strong>Úspora ze spotového tarifu: ~15 960 Kč/rok</strong><br><br>
+      Plus: FVE přebytky uložené do baterie a použité večer místo nákupu ze sítě:<br>
+      1 920 kWh × 4,5 Kč/kWh (alternativní cena) = <strong>~8 640 Kč</strong>
+    </p>
+  </div>
+
+  <h2>Měsíční přehled</h2>
+
+  <p>Úspora není rovnoměrná — v létě dominují FVE přebytky, v zimě spotové arbitráže:</p>
+
+  <table class="month-table">
+    <thead>
+      <tr><th>Měsíc</th><th>Cykly</th><th>kWh prošlo</th><th>Úspora (est.)</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Duben 2025</td><td>28</td><td>280 kWh</td><td>1 820 Kč</td></tr>
+      <tr><td>Květen</td><td>31</td><td>310 kWh</td><td>2 150 Kč</td></tr>
+      <tr><td>Červen</td><td>30</td><td>300 kWh</td><td>2 300 Kč</td></tr>
+      <tr><td>Červenec</td><td>31</td><td>310 kWh</td><td>2 480 Kč</td></tr>
+      <tr><td>Srpen</td><td>29</td><td>290 kWh</td><td>2 200 Kč</td></tr>
+      <tr><td>Září</td><td>27</td><td>270 kWh</td><td>1 940 Kč</td></tr>
+      <tr><td>Říjen</td><td>24</td><td>240 kWh</td><td>1 680 Kč</td></tr>
+      <tr><td>Listopad</td><td>26</td><td>260 kWh</td><td>1 820 Kč</td></tr>
+      <tr><td>Prosinec</td><td>28</td><td>280 kWh</td><td>2 050 Kč</td></tr>
+      <tr><td>Leden 2026</td><td>30</td><td>300 kWh</td><td>2 240 Kč</td></tr>
+      <tr><td>Únor</td><td>26</td><td>260 kWh</td><td>1 860 Kč</td></tr>
+      <tr><td>Březen</td><td>27</td><td>270 kWh</td><td>2 140 Kč</td></tr>
+      <tr><td><strong>Celkem</strong></td><td><strong>337</strong></td><td><strong>3 370 kWh</strong></td><td><strong>24 680 Kč</strong></td></tr>
+    </tbody>
+  </table>
+
+  <h2>Stav baterie po roce</h2>
+
+  <p>LiFePO4 chemie je pro domácí použití ideální — degradace je minimální. Po 337 cyklech (výrobce garantuje 3 000+) měříme kapacitu na <strong>98,2 % původní hodnoty</strong>. Systém Victron BMS ukazuje, že zatím vše funguje dle specifikace.</p>
+
+  <div class="callout">
+    <div class="callout-label">Tip</div>
+    <p>Doporučujeme nenabíjet na 100 % každý den — ideálně max. 90 % pro každodenní cykly, 100 % pouze když víte, že energii potřebujete (před bouřkou, nebo před drahým večerem). Victron umí SoC limit nastavit automaticky.</p>
+  </div>
+
+  <h2>Co bychom udělali jinak?</h2>
+
+  <p><strong>Baterie o 5 kWh větší.</strong> 10 kWh je v létě dost, ale v zimě dojde brzo. Ideální pro naši spotřebu by bylo 15 kWh.</p>
+
+  <p><strong>Začít dřív se spotovým tarifem.</strong> Přechod trval týdny vyřizování — příště bychom to řešili ještě před instalací FVE.</p>
+
+  <p><strong>EVCC pro nabíjení auta od prvního dne.</strong> Prvních 6 měsíců jsme nabíjeli auto manuálně — teprve pak jsme integrovali wallbox s EVCC a Cerbo GX. Přišli jsme o úspory.</p>
+
+  <div class="article-cta">
+    <h3>Kolik by vydělala vaše baterie?</h3>
+    <p>Zadejte kapacitu baterie, distribuora a tarif — kalkulačka odhadne roční úsporu pro vaší instalaci.</p>
+    <a class="btn-cta" href="/kalkulator.html">Spočítat úsporu →</a>
+  </div>
+
+  <div class="related">
+    <h3>Další články</h3>
+    <div class="related-grid">
+      <a class="related-card" href="/blog/nase-fve-jak-to-cele-zacalo.html">
+        <h4>Naše FVE — jak to celé začalo</h4>
+        <p>10 kWp, baterie Victron, elektromobil. Rok reálného provozu.</p>
+      </a>
+      <a class="related-card" href="/blog/spotova-cena-co-to-je.html">
+        <h4>Spotová cena elektřiny — co to je</h4>
+        <p>Průvodce proč je spotový tarif výhodný s FVE a baterií.</p>
+      </a>
+      <a class="related-card" href="/blog/node-red-automatizace.html">
+        <h4>Node-RED na Cerbo GX</h4>
+        <p>Automatizace ESS bez programování — jak jsme to nastavili.</p>
+      </a>
+      <a class="related-card" href="/blog/jak-nabijime-ev-chytre.html">
+        <h4>Jak nabíjíme elektromobil za zlomek ceny</h4>
+        <p>Reálné náklady: 0,8 Kč/km při kombinaci FVE + spotový tarif.</p>
+      </a>
+    </div>
+  </div>
+
+</article>
+
+<footer>
+  <p><a href="/">Energetika PWA</a> &nbsp;·&nbsp; <a href="/ceny.html">Ceny dnes</a> &nbsp;·&nbsp; <a href="/blog/">Blog</a> &nbsp;·&nbsp; <a href="/kalkulator.html">Kalkulačka</a></p>
+</footer>
+
+</body>
+</html>
