@@ -3,236 +3,1192 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SpotCeny.cz — Spotové ceny elektřiny pro majitele FVE</title>
-  <meta name="description" content="Aktuální spotové ceny elektřiny z OTE-CR a evropských burz. Kalkulačka úspory baterie, blog o FVE a ESS. Volné API pro Home Assistant a Node-RED.">
+  <title>SpotCeny — Automatizace FVE &amp; ESS pro majitele Victronu</title>
+  <meta name="description" content="Spotové ceny elektřiny, automatizace Victron ESS přes Node-RED, kalkulačka úspory a volné API. Vše pro majitele fotovoltaiky s Victron systémem.">
+
+  <!-- Canonical & Open Graph -->
   <link rel="canonical" href="https://spotceny.vercel.app/">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://spotceny.vercel.app/">
-  <meta property="og:title" content="SpotCeny — Spotové ceny elektřiny pro majitele FVE">
-  <meta property="og:description" content="Hodinové spotové ceny pro CZ a celou EU. Kalkulačka úspory ESS. Volné API. Blog o FVE, bateriích a elektromobilu.">
-  <meta name="twitter:card" content="summary">
+  <meta property="og:title" content="SpotCeny — Automatizace FVE &amp; ESS pro majitele Victronu">
+  <meta property="og:description" content="Spotové ceny, Node-RED automatizace Victron ESS a volné API. Ušetřete 15–40 tis. Kč ročně na elektřině.">
+  <meta property="og:image" content="https://spotceny.vercel.app/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <!-- JSON-LD structured data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "SpotCeny",
+    "url": "https://spotceny.vercel.app",
+    "description": "Spotové ceny elektřiny, automatizace Victron ESS a volné API pro majitele FVE.",
+    "areaServed": "CZ",
+    "hasOfferCatalog": {
+      "@type": "OfferCatalog",
+      "name": "Node-RED implementace",
+      "itemListElement": [
+        {
+          "@type": "Offer",
+          "name": "Basic balíček",
+          "price": "2900",
+          "priceCurrency": "CZK",
+          "description": "Základní optimalizace ESS podle spotových cen OTE-CR"
+        },
+        {
+          "@type": "Offer",
+          "name": "Medium balíček",
+          "price": "4900",
+          "priceCurrency": "CZK",
+          "description": "ESS + relé automatizace + nabíjení EV z přebytků FVE"
+        },
+        {
+          "@type": "Offer",
+          "name": "Pro balíček",
+          "price": "4900",
+          "priceCurrency": "CZK",
+          "description": "Kompletní řešení s MH Energy App a monitoringem"
+        }
+      ]
+    }
+  }
+  </script>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg: #0B1120; --bg2: #0F1729; --surface: #162038; --card: #0F1729;
-      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
-      --text1: #E8EEF8; --text2: #94A3B8; --text3: #5A7099;
-      --green: #10B981; --amber: #F59E0B; --blue: #3B82F6;
-      --sans: 'Inter', system-ui, sans-serif;
+      --bg:      #F8FAFC;
+      --bg2:     #FFFFFF;
+      --surface: #F1F5F9;
+      --card:    #FFFFFF;
+      --border:  rgba(0,0,0,0.07);
+      --border2: rgba(0,0,0,0.12);
+      --text1:   #0F172A;
+      --text2:   #475569;
+      --text3:   #94A3B8;
+      --green:   #059669;
+      --green-l: #ECFDF5;
+      --amber:   #D97706;
+      --amber-l: #FFFBEB;
+      --blue:    #2563EB;
+      --blue-l:  #EFF6FF;
+      --purple:  #7C3AED;
+      --purple-l:#F5F3FF;
+      --red:     #DC2626;
+      --sans:    'Inter', system-ui, sans-serif;
     }
-    body { font-family: var(--sans); background: var(--bg); color: var(--text1); min-height: 100vh; }
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--sans); background: var(--bg); color: var(--text1); min-height: 100vh; line-height: 1.6; }
 
+    /* ── TOPBAR ── */
     .topbar {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 24px; border-bottom: 1px solid var(--border);
-      background: var(--bg2); position: sticky; top: 0; z-index: 50;
+      padding: 14px 32px; border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.92); backdrop-filter: blur(12px);
+      position: sticky; top: 0; z-index: 100;
     }
-    .topbar-logo { font-size: .95rem; font-weight: 700; color: var(--amber); text-decoration: none; }
-    .topbar-logo span { color: var(--text2); font-weight: 400; }
-    .topbar-nav { display: flex; gap: 20px; }
-    .topbar-nav a { font-size: .82rem; font-weight: 500; color: var(--text2); text-decoration: none; transition: color .15s; }
-    .topbar-nav a:hover { color: var(--amber); }
-    @media(max-width:600px) { .topbar-nav { display: none; } }
+    .topbar-logo { font-size: 1.05rem; font-weight: 800; color: var(--amber); text-decoration: none; letter-spacing: -.02em; }
+    .topbar-logo span { color: var(--text3); font-weight: 400; font-size: .88rem; }
+    .topbar-nav { display: flex; gap: 28px; align-items: center; }
+    .topbar-nav a { font-size: .85rem; font-weight: 500; color: var(--text2); text-decoration: none; transition: color .15s; }
+    .topbar-nav a:hover { color: var(--text1); }
+    .topbar-cta {
+      background: var(--amber); color: #fff; border-radius: 8px;
+      padding: 8px 18px; font-size: .82rem; font-weight: 700;
+      text-decoration: none; transition: background .15s;
+    }
+    .topbar-cta:hover { background: #b45309; }
 
+    /* hamburger */
+    .hamburger {
+      display: none; flex-direction: column; gap: 5px; cursor: pointer;
+      background: none; border: none; padding: 6px;
+    }
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--text1); border-radius: 2px; transition: all .2s; }
+    .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .hamburger.open span:nth-child(2) { opacity: 0; }
+    .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    @media(max-width:700px) {
+      .topbar { padding: 12px 20px; }
+      .topbar-nav { display: none; position: absolute; top: 57px; left: 0; right: 0; flex-direction: column; gap: 0; background: #fff; border-bottom: 1px solid var(--border); padding: 8px 0; box-shadow: 0 8px 24px rgba(0,0,0,0.08); z-index: 99; }
+      .topbar-nav.mobile-open { display: flex; }
+      .topbar-nav a { padding: 12px 24px; font-size: .93rem; border-bottom: 1px solid var(--border); }
+      .topbar-nav a:last-child { border-bottom: none; }
+      .topbar-cta { border-radius: 0; width: 100%; text-align: center; padding: 14px 24px; }
+      .hamburger { display: flex; }
+    }
+
+    /* ── HERO ── */
     .hero {
-      padding: 80px 24px 64px;
-      background: linear-gradient(160deg, #0f1e3a 0%, var(--bg) 65%);
+      padding: 90px 24px 80px;
+      background: linear-gradient(160deg, #fffbeb 0%, #f8fafc 60%);
       border-bottom: 1px solid var(--border);
       text-align: center;
     }
     .hero-badge {
-      display: inline-block; background: rgba(245,158,11,0.1); color: var(--amber);
-      border: 1px solid rgba(245,158,11,0.25); border-radius: 999px;
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--amber-l); color: var(--amber);
+      border: 1px solid rgba(217,119,6,0.25); border-radius: 999px;
       font-size: .72rem; font-weight: 700; letter-spacing: .07em;
-      text-transform: uppercase; padding: 4px 14px; margin-bottom: 20px;
+      text-transform: uppercase; padding: 5px 14px; margin-bottom: 28px;
     }
     .hero h1 {
-      font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 900;
-      line-height: 1.1; letter-spacing: -.03em; margin-bottom: 18px;
+      font-size: clamp(2.2rem, 5.5vw, 3.8rem); font-weight: 900;
+      line-height: 1.05; letter-spacing: -.04em; margin-bottom: 22px; color: var(--text1);
     }
-    .hero h1 span { color: var(--amber); }
-    .hero p {
-      color: var(--text2); font-size: 1.1rem; max-width: 560px;
-      margin: 0 auto 36px; line-height: 1.7;
+    .hero h1 .accent { color: var(--amber); }
+    .hero-sub {
+      color: var(--text2); font-size: clamp(.95rem, 2vw, 1.1rem);
+      max-width: 560px; margin: 0 auto 40px; line-height: 1.75;
     }
-    .hero-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .hero-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 56px; }
     .btn-primary {
-      background: var(--amber); color: #000; border-radius: 12px;
-      padding: 13px 26px; font-weight: 700; font-size: .95rem;
-      text-decoration: none; transition: background .15s;
+      background: var(--amber); color: #fff; border-radius: 12px;
+      padding: 14px 28px; font-weight: 800; font-size: .95rem;
+      text-decoration: none; transition: background .15s; border: none; cursor: pointer;
     }
-    .btn-primary:hover { background: #d97706; }
-    .btn-secondary {
-      background: rgba(255,255,255,0.06); color: var(--text1);
-      border: 1px solid var(--border2); border-radius: 12px;
-      padding: 13px 26px; font-weight: 600; font-size: .95rem;
-      text-decoration: none; transition: background .15s;
+    .btn-primary:hover { background: #b45309; }
+    .btn-outline {
+      background: #fff; color: var(--text1);
+      border: 1.5px solid var(--border2); border-radius: 12px;
+      padding: 14px 28px; font-weight: 600; font-size: .95rem;
+      text-decoration: none; transition: border-color .15s, background .15s;
     }
-    .btn-secondary:hover { background: rgba(255,255,255,0.1); }
+    .btn-outline:hover { border-color: var(--amber); }
 
-    .main { max-width: 960px; margin: 0 auto; padding: 60px 20px 80px; }
-
-    .section-label {
-      font-size: .68rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: .1em; color: var(--text3); margin-bottom: 20px;
+    .hero-stats {
+      display: inline-flex; gap: 0; flex-wrap: wrap; justify-content: center;
+      background: #fff; border: 1.5px solid var(--border2); border-radius: 18px;
+      overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.06);
     }
-
-    .cards {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
-      margin-bottom: 60px;
+    .hero-stat {
+      padding: 20px 32px; text-align: center; border-right: 1px solid var(--border);
     }
-    @media(max-width:700px) { .cards { grid-template-columns: 1fr; } }
-    @media(max-width:900px) and (min-width:701px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+    .hero-stat:last-child { border-right: none; }
+    @media(max-width:600px) { .hero-stat { padding: 16px 20px; border-right: none; border-bottom: 1px solid var(--border); } .hero-stat:last-child { border-bottom: none; } }
+    .hero-stat .val { font-size: 1.5rem; font-weight: 900; color: var(--amber); letter-spacing: -.03em; line-height: 1; }
+    .hero-stat .lbl { font-size: .7rem; color: var(--text3); margin-top: 4px; font-weight: 500; }
 
-    .card {
-      background: var(--card); border: 1px solid var(--border2);
-      border-radius: 18px; padding: 28px; text-decoration: none; color: inherit;
-      transition: border-color .2s, transform .15s; display: flex; flex-direction: column;
+    /* ── SHARED ── */
+    .section { max-width: 1060px; margin: 0 auto; padding: 80px 24px; }
+    .section-tag {
+      display: inline-block; font-size: .68rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .1em;
+      color: var(--amber); margin-bottom: 10px;
     }
-    .card:hover { border-color: rgba(245,158,11,0.35); transform: translateY(-2px); }
-    .card-icon { font-size: 2.2rem; margin-bottom: 16px; }
-    .card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; line-height: 1.3; }
-    .card p { font-size: .85rem; color: var(--text2); line-height: 1.6; flex: 1; margin-bottom: 18px; }
-    .card-tag {
+    .section-title { font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 900; letter-spacing: -.03em; line-height: 1.15; margin-bottom: 12px; }
+    .section-sub { color: var(--text2); font-size: .97rem; max-width: 540px; line-height: 1.75; margin-bottom: 48px; }
+
+    /* ── CTA STRIP ── */
+    .cta-strip {
+      background: var(--amber-l); border-top: 1px solid rgba(217,119,6,0.2);
+      border-bottom: 1px solid rgba(217,119,6,0.2); padding: 28px 24px;
+      text-align: center;
+    }
+    .cta-strip p { font-size: .97rem; color: var(--text1); margin-bottom: 14px; font-weight: 500; }
+    .cta-strip .strip-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    /* ── SERVICES ── */
+    .services-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    @media(max-width:860px) { .services-grid { grid-template-columns: repeat(2,1fr); } }
+    @media(max-width:560px) { .services-grid { grid-template-columns: 1fr; } }
+
+    .service-card {
+      background: var(--card); border: 1.5px solid var(--border);
+      border-radius: 18px; padding: 26px; text-decoration: none; color: inherit;
+      transition: border-color .2s, box-shadow .2s, transform .15s;
+      display: flex; flex-direction: column;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    .service-card:hover { border-color: var(--amber); box-shadow: 0 8px 32px rgba(217,119,6,0.1); transform: translateY(-2px); }
+    .service-icon { width: 46px; height: 46px; border-radius: 12px; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
+    .icon-amber { background: var(--amber-l); }
+    .icon-green { background: var(--green-l); }
+    .icon-blue  { background: var(--blue-l);  }
+    .icon-purple{ background: var(--purple-l);}
+    .service-tag {
       display: inline-block; padding: 3px 10px; border-radius: 999px;
-      font-size: .65rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+      font-size: .62rem; font-weight: 700; letter-spacing: .05em;
+      text-transform: uppercase; margin-bottom: 12px; align-self: flex-start;
     }
-    .tag-free { background: rgba(16,185,129,0.12); color: var(--green); }
-    .tag-api  { background: rgba(59,130,246,0.12); color: var(--blue); }
-    .tag-new  { background: rgba(245,158,11,0.12); color: var(--amber); }
+    .tag-free   { background: var(--green-l);  color: var(--green); }
+    .tag-api    { background: var(--blue-l);   color: var(--blue); }
+    .tag-paid   { background: var(--amber-l);  color: var(--amber); }
+    .tag-new    { background: var(--purple-l); color: var(--purple); }
+    .service-card h3 { font-size: 1rem; font-weight: 800; margin-bottom: 8px; line-height: 1.25; }
+    .service-card p { font-size: .84rem; color: var(--text2); line-height: 1.65; flex: 1; margin-bottom: 18px; }
+    .service-link { font-size: .82rem; font-weight: 700; color: var(--amber); text-decoration: none; }
 
-    .api-section {
-      background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.18);
-      border-radius: 18px; padding: 36px; margin-bottom: 60px;
+    /* ── HOW ── */
+    .how-bg { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .steps { display: grid; grid-template-columns: repeat(4,1fr); gap: 24px; }
+    @media(max-width:700px) { .steps { grid-template-columns: repeat(2,1fr); } }
+    .step { text-align: center; }
+    .step-num {
+      width: 44px; height: 44px; border-radius: 50%; margin: 0 auto 16px;
+      background: var(--amber-l); border: 2px solid rgba(217,119,6,0.3);
+      color: var(--amber); font-size: 1rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
     }
-    .api-section h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: 10px; }
-    .api-section p { color: var(--text2); font-size: .9rem; margin-bottom: 24px; line-height: 1.6; }
-    .api-endpoints { display: flex; flex-direction: column; gap: 10px; }
+    .step h4 { font-size: .93rem; font-weight: 700; margin-bottom: 8px; }
+    .step p { font-size: .81rem; color: var(--text2); line-height: 1.6; }
+
+    /* ── SOCIAL PROOF ── */
+    .social-bg { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .testimonials { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; }
+    @media(max-width:700px) { .testimonials { grid-template-columns: 1fr; } }
+    .testimonial {
+      background: #fff; border: 1.5px solid var(--border);
+      border-radius: 18px; padding: 28px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    .testimonial-stars { color: var(--amber); font-size: 1rem; margin-bottom: 14px; letter-spacing: 2px; }
+    .testimonial q { display: block; font-size: .9rem; color: var(--text1); line-height: 1.65; font-style: italic; margin-bottom: 18px; quotes: "\201E" "\201C"; }
+    .testimonial q::before { content: open-quote; }
+    .testimonial q::after  { content: close-quote; }
+    .testimonial-author { display: flex; align-items: center; gap: 12px; }
+    .testimonial-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--amber-l); display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+    .testimonial-name { font-size: .85rem; font-weight: 700; color: var(--text1); }
+    .testimonial-meta { font-size: .75rem; color: var(--text3); }
+    .testimonial-saving { margin-top: 14px; padding: 10px 14px; background: var(--green-l); border-radius: 10px; font-size: .8rem; color: var(--green); font-weight: 700; }
+
+    /* ── QUIZ ── */
+    .quiz-bg { background: linear-gradient(160deg, #fffbeb 0%, #f8fafc 100%); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .quiz-wrap { max-width: 720px; margin: 0 auto; padding: 80px 24px; }
+    .quiz-box {
+      background: #fff; border: 1.5px solid var(--border2);
+      border-radius: 24px; padding: 40px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.07);
+    }
+    @media(max-width:500px) { .quiz-box { padding: 28px 20px; } }
+    .quiz-header { text-align: center; margin-bottom: 36px; }
+    .quiz-header .quiz-icon { font-size: 2.4rem; margin-bottom: 12px; }
+    .quiz-header h2 { font-size: 1.5rem; font-weight: 900; letter-spacing: -.02em; margin-bottom: 8px; }
+    .quiz-header p { color: var(--text2); font-size: .9rem; }
+
+    .quiz-step { display: none; }
+    .quiz-step.active { display: block; }
+    .quiz-q { font-size: 1rem; font-weight: 700; margin-bottom: 20px; color: var(--text1); }
+    .quiz-options { display: flex; flex-direction: column; gap: 10px; }
+    .quiz-option {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 18px; border: 1.5px solid var(--border2);
+      border-radius: 12px; cursor: pointer; transition: all .15s;
+      background: var(--bg);
+    }
+    .quiz-option:hover { border-color: var(--amber); background: var(--amber-l); }
+    .quiz-option.selected { border-color: var(--amber); background: var(--amber-l); }
+    .quiz-option .opt-icon { font-size: 1.3rem; flex-shrink: 0; }
+    .quiz-option .opt-label { font-size: .9rem; font-weight: 600; color: var(--text1); }
+    .quiz-option .opt-desc { font-size: .78rem; color: var(--text2); }
+
+    .quiz-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; }
+    .quiz-progress { font-size: .75rem; color: var(--text3); }
+    .quiz-progress-bar { height: 4px; background: var(--surface); border-radius: 4px; margin-bottom: 28px; }
+    .quiz-progress-fill { height: 4px; background: var(--amber); border-radius: 4px; transition: width .3s; }
+
+    .btn-quiz-next {
+      background: var(--amber); color: #fff; border: none; border-radius: 10px;
+      padding: 11px 24px; font-family: var(--sans); font-size: .88rem;
+      font-weight: 700; cursor: pointer; transition: background .15s;
+    }
+    .btn-quiz-next:hover { background: #b45309; }
+    .btn-quiz-next:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-quiz-back {
+      background: transparent; color: var(--text2); border: none;
+      font-family: var(--sans); font-size: .85rem; cursor: pointer;
+      padding: 11px 0; transition: color .15s;
+    }
+    .btn-quiz-back:hover { color: var(--text1); }
+
+    /* Quiz result */
+    .quiz-result { display: none; text-align: center; }
+    .quiz-result.active { display: block; }
+    .result-badge {
+      display: inline-block; padding: 6px 18px; border-radius: 999px;
+      font-size: .72rem; font-weight: 800; letter-spacing: .07em;
+      text-transform: uppercase; margin-bottom: 16px;
+    }
+    .result-badge.basic  { background: var(--blue-l); color: var(--blue); }
+    .result-badge.medium { background: var(--amber-l); color: var(--amber); }
+    .result-badge.pro    { background: var(--purple-l); color: var(--purple); }
+    .quiz-result h3 { font-size: 1.5rem; font-weight: 900; letter-spacing: -.02em; margin-bottom: 10px; }
+    .quiz-result p { color: var(--text2); font-size: .92rem; line-height: 1.7; max-width: 480px; margin: 0 auto 28px; }
+    .result-features {
+      background: var(--surface); border-radius: 14px; padding: 20px 24px;
+      margin: 0 auto 20px; max-width: 440px; text-align: left;
+    }
+    .result-features li {
+      display: flex; gap: 10px; align-items: flex-start;
+      font-size: .85rem; color: var(--text2); padding: 6px 0;
+      border-bottom: 1px solid var(--border); list-style: none;
+    }
+    .result-features li:last-child { border-bottom: none; }
+    .result-features li::before { content: "✓"; color: var(--green); font-weight: 700; flex-shrink: 0; }
+    .result-price-wrap { margin-bottom: 6px; }
+    .result-price { font-size: 2rem; font-weight: 900; color: var(--text1); letter-spacing: -.03em; }
+    .result-recur { font-size: .8rem; color: var(--text3); margin-bottom: 24px; }
+    .btn-quiz-restart {
+      background: transparent; color: var(--text3); border: none;
+      font-family: var(--sans); font-size: .8rem; cursor: pointer;
+      text-decoration: underline; margin-top: 12px; display: block; margin: 12px auto 0;
+    }
+
+    /* ── PRICING ── */
+    .pricing-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+    @media(max-width:800px) { .pricing-grid { grid-template-columns: 1fr; } }
+
+    .pricing-card {
+      background: #fff; border: 1.5px solid var(--border);
+      border-radius: 20px; padding: 32px;
+      display: flex; flex-direction: column;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+      position: relative;
+    }
+    .pricing-card.featured { border-color: var(--amber); box-shadow: 0 8px 40px rgba(217,119,6,0.12); }
+    .pricing-badge {
+      position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+      background: var(--amber); color: #fff; border-radius: 999px;
+      font-size: .65rem; font-weight: 800; letter-spacing: .06em;
+      text-transform: uppercase; padding: 4px 16px; white-space: nowrap;
+    }
+    .pricing-name { font-size: .72rem; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 10px; }
+    .pricing-price { font-size: 2.4rem; font-weight: 900; letter-spacing: -.04em; line-height: 1; margin-bottom: 2px; }
+    .pricing-price .cur { font-size: 1rem; font-weight: 500; color: var(--text3); }
+    .pricing-recur { font-size: .8rem; color: var(--text3); margin-bottom: 20px; }
+    .pricing-recur strong { color: var(--text2); font-weight: 600; }
+    .pricing-desc { font-size: .86rem; color: var(--text2); line-height: 1.65; margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+    .pricing-features { list-style: none; padding: 0; margin-bottom: 28px; flex: 1; }
+    .pricing-features li {
+      display: flex; gap: 10px; align-items: flex-start;
+      font-size: .84rem; color: var(--text2); padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .pricing-features li:last-child { border-bottom: none; }
+    .pricing-features li::before { content: "✓"; color: var(--green); font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+    .btn-plan {
+      display: block; text-align: center; border-radius: 12px;
+      padding: 13px; font-weight: 700; font-size: .9rem;
+      text-decoration: none; transition: all .15s;
+    }
+    .btn-plan-primary { background: var(--amber); color: #fff; }
+    .btn-plan-primary:hover { background: #b45309; }
+    .btn-plan-outline { background: transparent; color: var(--text1); border: 1.5px solid var(--border2); }
+    .btn-plan-outline:hover { border-color: var(--amber); }
+
+    /* ── API ── */
+    .api-bg { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .api-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
+    @media(max-width:700px) { .api-grid { grid-template-columns: 1fr; } }
+    .api-endpoints { display: flex; flex-direction: column; gap: 8px; }
     .endpoint {
+      background: #0F172A; border-radius: 10px; padding: 13px 16px;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: .78rem;
       display: flex; align-items: center; gap: 12px;
-      background: rgba(255,255,255,0.04); border-radius: 10px; padding: 12px 16px;
-      font-family: 'JetBrains Mono', monospace; font-size: .8rem;
     }
-    .method { color: var(--green); font-weight: 700; font-size: .7rem; }
-    .path { color: var(--text1); }
-    .desc { color: var(--text3); font-size: .75rem; margin-left: auto; font-family: var(--sans); }
-    @media(max-width:600px) { .desc { display: none; } }
+    .method { color: #34D399; font-weight: 700; font-size: .7rem; flex-shrink: 0; }
+    .path { color: #E2E8F0; }
+    .edesc { color: #64748B; font-size: .72rem; margin-left: auto; font-family: var(--sans); }
+    @media(max-width:500px) { .edesc { display: none; } }
 
-    footer {
-      border-top: 1px solid var(--border); padding: 28px 24px;
-      text-align: center; font-size: .78rem; color: var(--text3);
+    /* ── FAQ ── */
+    .faq-list { display: flex; flex-direction: column; gap: 12px; max-width: 760px; }
+    .faq-item { background: #fff; border: 1.5px solid var(--border); border-radius: 14px; overflow: hidden; }
+    .faq-q {
+      width: 100%; text-align: left; background: none; border: none; padding: 20px 24px;
+      font-family: var(--sans); font-size: .95rem; font-weight: 700; color: var(--text1);
+      cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 16px;
+      transition: color .15s;
     }
-    footer a { color: var(--text2); text-decoration: none; }
-    footer a:hover { color: var(--amber); }
+    .faq-q:hover { color: var(--amber); }
+    .faq-q::after { content: "+"; font-size: 1.2rem; font-weight: 400; flex-shrink: 0; transition: transform .2s; }
+    .faq-item.open .faq-q::after { transform: rotate(45deg); }
+    .faq-a { display: none; padding: 0 24px 20px; font-size: .88rem; color: var(--text2); line-height: 1.7; }
+    .faq-item.open .faq-a { display: block; }
+
+    /* ── BLOG ── */
+    .blog-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+    @media(max-width:700px) { .blog-grid { grid-template-columns: 1fr; } }
+    .blog-card {
+      background: #fff; border: 1.5px solid var(--border);
+      border-radius: 16px; padding: 24px; text-decoration: none; color: inherit;
+      transition: border-color .2s, box-shadow .2s;
+      display: flex; flex-direction: column;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    .blog-card:hover { border-color: var(--amber); box-shadow: 0 4px 20px rgba(217,119,6,0.08); }
+    .blog-icon { font-size: 1.8rem; margin-bottom: 14px; }
+    .blog-card h4 { font-size: .95rem; font-weight: 700; line-height: 1.3; margin-bottom: 8px; }
+    .blog-card p { font-size: .82rem; color: var(--text2); line-height: 1.55; flex: 1; margin-bottom: 14px; }
+    .blog-meta { font-size: .7rem; color: var(--text3); font-weight: 500; }
+
+    /* ── CTA ── */
+    .cta-section {
+      text-align: center; padding: 80px 24px;
+      background: linear-gradient(160deg, #fffbeb 0%, #f8fafc 100%);
+      border-top: 1px solid var(--border);
+    }
+    .cta-section h2 { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 900; letter-spacing: -.03em; margin-bottom: 14px; }
+    .cta-section p { color: var(--text2); font-size: .97rem; max-width: 480px; margin: 0 auto 36px; line-height: 1.75; }
+    .email-form { max-width: 440px; margin: 0 auto; }
+    .email-row { display: flex; gap: 10px; }
+    @media(max-width:500px) { .email-row { flex-direction: column; } }
+    .email-input {
+      flex: 1; background: #fff; border: 1.5px solid var(--border2);
+      border-radius: 10px; padding: 13px 16px; color: var(--text1);
+      font-family: var(--sans); font-size: .9rem;
+    }
+    .email-input:focus { outline: none; border-color: var(--amber); }
+    .btn-sub {
+      background: var(--green); color: #fff; border: none; border-radius: 10px;
+      padding: 13px 22px; font-family: var(--sans); font-size: .88rem;
+      font-weight: 700; cursor: pointer; white-space: nowrap; transition: background .15s;
+    }
+    .btn-sub:hover { background: #047857; }
+    .cta-note { font-size: .72rem; color: var(--text3); margin-top: 10px; }
+    .cta-success { display: none; background: var(--green-l); border: 1.5px solid rgba(5,150,105,0.2); border-radius: 12px; padding: 20px; color: var(--green); font-weight: 600; font-size: .92rem; }
+
+    /* ── FOOTER ── */
+    footer { background: var(--text1); padding: 48px 32px 28px; }
+    .footer-inner { max-width: 1060px; margin: 0 auto; }
+    .footer-top { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+    @media(max-width:700px) { .footer-top { grid-template-columns: 1fr 1fr; gap: 24px; } }
+    .footer-brand .logo { font-size: 1.05rem; font-weight: 800; color: var(--amber); margin-bottom: 10px; }
+    .footer-brand p { font-size: .82rem; color: #64748B; line-height: 1.6; max-width: 220px; }
+    .footer-col h5 { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #475569; margin-bottom: 14px; }
+    .footer-col a { display: block; font-size: .83rem; color: #94A3B8; text-decoration: none; margin-bottom: 8px; transition: color .15s; }
+    .footer-col a:hover { color: #fff; }
+    .footer-bottom { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .footer-bottom p { font-size: .75rem; color: #475569; }
   </style>
 </head>
 <body>
 
+<!-- TOPBAR -->
 <nav class="topbar">
-  <a class="topbar-logo" href="/">⚡ SpotCeny <span>.cz</span></a>
-  <div class="topbar-nav">
-    <a href="/ceny.html">CZ ceny</a>
-    <a href="/cenySpotEU/">EU ceny</a>
-    <a href="/kalkulator.html">Kalkulačka</a>
+  <a class="topbar-logo" href="/">⚡ SpotCeny <span>/ by MH Energy</span></a>
+  <button class="hamburger" id="hamburger" aria-label="Otevřít menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="topbar-nav" id="topbar-nav">
+    <a href="#sluzby">Služby</a>
+    <a href="/cenySpotEU/">EU Ceny</a>
+    <a href="#quiz">Jaký balíček?</a>
+    <a href="#node-red">Node-RED</a>
     <a href="/blog/">Blog</a>
+    <a href="#kontakt" class="topbar-cta">Zjistit vaši úsporu →</a>
   </div>
 </nav>
 
-<div class="hero">
-  <div class="hero-badge">Zdarma · Bez registrace</div>
-  <h1>Spotové ceny elektřiny<br>pro <span>majitele FVE</span></h1>
-  <p>Hodinové ceny z OTE-CR a evropských burz. Kalkulačka úspory baterie. Volné API pro Home Assistant, Node-RED a Cerbo GX.</p>
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">⚡ Pro majitele Victron ESS</div>
+  <h1>Vaše FVE vydělává.<br><span class="accent">Víte kolik?</span></h1>
+  <p class="hero-sub">Spotové ceny, automatizace ESS přes Node-RED a aplikace pro řízení baterie. Vše pro majitele fotovoltaiky s Victron systémem — od sledování cen po plnou automatizaci.</p>
   <div class="hero-btns">
-    <a class="btn-primary" href="/cenySpotEU/">Ceny dnes →</a>
-    <a class="btn-secondary" href="/kalkulator.html">Kalkulačka úspory</a>
+    <a class="btn-primary" href="#quiz">Zjistěte vaši úsporu zdarma →</a>
+    <a class="btn-outline" href="/cenySpotEU/">Spotové ceny dnes</a>
   </div>
-</div>
+  <div class="hero-stats">
+    <div class="hero-stat">
+      <div class="val">15–40 tis.</div>
+      <div class="lbl">Kč úspora / rok</div>
+    </div>
+    <div class="hero-stat">
+      <div class="val">6 zemí</div>
+      <div class="lbl">EU spotové ceny</div>
+    </div>
+    <div class="hero-stat">
+      <div class="val">volné API</div>
+      <div class="lbl">HA &amp; Node-RED</div>
+    </div>
+    <div class="hero-stat">
+      <div class="val">24/7</div>
+      <div class="lbl">automatizace ESS</div>
+    </div>
+  </div>
+</section>
 
-<div class="main">
-
-  <p class="section-label">Co tu najdete</p>
-
-  <div class="cards">
-
-    <a class="card" href="/cenySpotEU/">
-      <div class="card-icon">🌍</div>
-      <h3>EU spotové ceny</h3>
-      <p>Hodinové ceny pro Česko, Německo, Rakousko, Polsko, Maďarsko a Francii. Graf, tabulka, porovnání zemí. Data z Fraunhofer ISE.</p>
-      <span class="card-tag tag-free">Zdarma</span>
+<!-- SERVICES -->
+<section class="section" id="sluzby">
+  <span class="section-tag">Co nabízíme</span>
+  <h2 class="section-title">Vše pro chytrou FVE</h2>
+  <p class="section-sub">Od sledování spotových cen přes volné API až po individuální Node-RED implementaci na míru pro váš Victron systém.</p>
+  <div class="services-grid">
+    <a class="service-card" href="/cenySpotEU/">
+      <div class="service-icon icon-amber">🌍</div>
+      <span class="service-tag tag-free">Zdarma</span>
+      <h3>EU Spotové ceny</h3>
+      <p>Hodinové ceny pro CZ, DE, AT, PL, HU a FR. Graf, tabulka, porovnání zemí. Data z Fraunhofer ISE.</p>
+      <span class="service-link">Otevřít ceny →</span>
     </a>
-
-    <a class="card" href="/ceny.html">
-      <div class="card-icon">📊</div>
+    <a class="service-card" href="/ceny.html">
+      <div class="service-icon icon-green">📊</div>
+      <span class="service-tag tag-free">Zdarma</span>
       <h3>CZ ceny v korunách</h3>
-      <p>Spotové ceny z OTE-CR v Kč/MWh. Dnes a zítra, nákupní i prodejní cena podle vašeho distributora a tarifu.</p>
-      <span class="card-tag tag-free">Zdarma</span>
+      <p>Spotové ceny z OTE-CR v Kč/MWh. Dnes a zítra, nákupní i prodejní cena podle distributora a tarifu.</p>
+      <span class="service-link">Zobrazit ceny →</span>
     </a>
-
-    <a class="card" href="/kalkulator.html">
-      <div class="card-icon">🔋</div>
+    <a class="service-card" href="/kalkulator.html">
+      <div class="service-icon icon-amber">🔋</div>
+      <span class="service-tag tag-free">Zdarma</span>
       <h3>Kalkulačka úspory</h3>
-      <p>Kolik ročně vydělá vaše baterie na spotových cenách? Zadejte kapacitu, distributora a tarif — dostanete odhad úspory.</p>
-      <span class="card-tag tag-new">Nové</span>
+      <p>Kolik ročně vydělá vaše baterie? Zadejte kapacitu ESS, distributora a tarif — dostanete realistický odhad.</p>
+      <span class="service-link">Spočítat →</span>
     </a>
-
-    <a class="card" href="/blog/">
-      <div class="card-icon">📝</div>
-      <h3>Blog o FVE a ESS</h3>
-      <p>Reálné zkušenosti majitele FVE s baterií Victron a elektromobilem. Bez marketingu, s čísly z reálného provozu.</p>
-      <span class="card-tag tag-free">5 článků</span>
-    </a>
-
-    <a class="card" href="/cenySpotEU/#api">
-      <div class="card-icon">⚙️</div>
+    <a class="service-card" href="#api">
+      <div class="service-icon icon-blue">⚙️</div>
+      <span class="service-tag tag-api">REST API</span>
       <h3>Volné API</h3>
-      <p>JSON endpoint bez autentizace. Připojte přímo do Home Assistant, Node-RED, Python nebo Excel. Data pro 6 zemí EU.</p>
-      <span class="card-tag tag-api">REST API</span>
+      <p>JSON endpointy bez registrace. Připojte do Home Assistant, Node-RED nebo Python. 6 zemí EU.</p>
+      <span class="service-link">Zobrazit endpointy →</span>
     </a>
-
-    <div class="card" style="opacity:.5; cursor:default;">
-      <div class="card-icon">🚀</div>
-      <h3>Brzy: MQTT + historická data</h3>
-      <p>MQTT endpoint pro Cerbo GX a Home Assistant. Historická data po měsících. Připravujeme.</p>
-      <span class="card-tag tag-new">Chystáme</span>
-    </div>
-
+    <a class="service-card" href="#node-red">
+      <div class="service-icon icon-amber">🔧</div>
+      <span class="service-tag tag-paid">Placená služba</span>
+      <h3>Node-RED na míru</h3>
+      <p>Implementace Node-RED flow pro váš Cerbo GX. Optimalizace ESS, automatizace relé, nabíjení EV z přebytků.</p>
+      <span class="service-link">Zobrazit balíčky →</span>
+    </a>
+    <a class="service-card" href="https://mh-energy-cwlj.vercel.app" target="_blank" rel="noopener noreferrer">
+      <div class="service-icon icon-purple">📱</div>
+      <span class="service-tag tag-new">Beta</span>
+      <h3>MH Energy App</h3>
+      <p>PWA aplikace pro řízení Victron ESS. Dashboard, strategie, plán na zítřek. Propojeno s VRM a Node-RED.</p>
+      <span class="service-link">Otevřít app →</span>
+    </a>
   </div>
+</section>
 
-  <div class="api-section">
-    <h2>Volné API — použijte ve svých projektech</h2>
-    <p>REST endpointy bez registrace, bez API klíče. Aktualizace každých 5 minut. Podporuje Home Assistant, Node-RED, Python, Excel a další nástroje.</p>
-    <div class="api-endpoints">
-      <div class="endpoint">
-        <span class="method">GET</span>
-        <span class="path">/api/eu-prices?country=cz</span>
-        <span class="desc">EU spotové ceny (6 zemí)</span>
-      </div>
-      <div class="endpoint">
-        <span class="method">GET</span>
-        <span class="path">/api/ceny</span>
-        <span class="desc">CZ ceny v Kč z OTE-CR</span>
-      </div>
-      <div class="endpoint">
-        <span class="method">GET</span>
-        <span class="path">/api/eu-prices?country=de</span>
-        <span class="desc">Německo, Rakousko, Polsko…</span>
-      </div>
-    </div>
+<!-- CTA STRIP #1 — after services -->
+<div class="cta-strip">
+  <p>Nevíte kde začít? Vyplňte 4 otázky a doporučíme vám přesně to, co vaše instalace potřebuje.</p>
+  <div class="strip-btns">
+    <a class="btn-primary" href="#quiz">Spustit dotazník →</a>
+    <a class="btn-outline" href="/kalkulator.html">Kalkulačka úspory</a>
   </div>
-
 </div>
 
-<footer>
-  <p>
-    <a href="/ceny.html">CZ ceny</a> &nbsp;·&nbsp;
-    <a href="/cenySpotEU/">EU ceny</a> &nbsp;·&nbsp;
-    <a href="/kalkulator.html">Kalkulačka</a> &nbsp;·&nbsp;
-    <a href="/blog/">Blog</a>
+<!-- HOW IT WORKS -->
+<div class="how-bg">
+  <section class="section">
+    <span class="section-tag">Jak to funguje</span>
+    <h2 class="section-title">Od spotové ceny k úspoře</h2>
+    <p class="section-sub">Automatizace která pracuje za vás — 24 hodin denně, bez manuálního přepínání.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h4>Stáhneme ceny</h4>
+        <p>Každý den po 14:00 stáhneme zítřejší spotové ceny z OTE-CR pro váš region.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h4>Naplánujeme</h4>
+        <p>Algoritmus najde nejlevnější hodiny a naplánuje nabíjení baterie a ESS strategii.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h4>Automatizujeme</h4>
+        <p>Node-RED na Cerbo GX řídí ESS, relé a wallbox podle plánu — bez vašeho zásahu.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h4>Šetříme</h4>
+        <p>Baterie se nabíjí za 0,5–1 Kč/kWh v noci. Večer kryje spotřebu místo drahé špičky.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- CTA STRIP #2 — after how it works -->
+<div class="cta-strip">
+  <p>Přesně tak funguje i vaše ESS — stačí to správně nastavit. Pomůžeme vám s tím.</p>
+  <div class="strip-btns">
+    <a class="btn-primary" href="#node-red">Zobrazit balíčky →</a>
+    <a class="btn-outline" href="#kontakt">Nezávazně napsat</a>
+  </div>
+</div>
+
+<!-- SOCIAL PROOF -->
+<div class="social-bg">
+  <section class="section">
+    <span class="section-tag">Zákazníci</span>
+    <h2 class="section-title">Reálné výsledky, ne odhady</h2>
+    <p class="section-sub">Majitelé FVE s Victron ESS, kteří přešli na automatické řízení podle spotových cen.</p>
+    <div class="testimonials">
+      <div class="testimonial">
+        <div class="testimonial-stars">★★★★★</div>
+        <q>Nastavení trvalo odpoledne, od té doby to běží samo. Baterie se nabíjí přesně v nejlevnějších hodinách — bez jediného ručního zásahu.</q>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">🏠</div>
+          <div>
+            <div class="testimonial-name">Radek V.</div>
+            <div class="testimonial-meta">10 kWp, 10 kWh ESS, Jihomoravský kraj</div>
+          </div>
+        </div>
+        <div class="testimonial-saving">Úspora cca 22 000 Kč / rok</div>
+      </div>
+      <div class="testimonial">
+        <div class="testimonial-stars">★★★★★</div>
+        <q>Přidali jsme automatizaci bojleru a wallboxu. EV se nabíjí z přebytků FVE a v noci za nejnižší spot. Fakturu za elektřinu jsme snížili na minimum.</q>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">🚗</div>
+          <div>
+            <div class="testimonial-name">Martin a Jana K.</div>
+            <div class="testimonial-meta">8 kWp FVE, Tesla Model 3, Plzeňský kraj</div>
+          </div>
+        </div>
+        <div class="testimonial-saving">Úspora cca 38 000 Kč / rok (FVE + EV)</div>
+      </div>
+      <div class="testimonial">
+        <div class="testimonial-stars">★★★★★</div>
+        <q>Oceňuju přehled v appce — vidím co ESS dělá, kdy se nabíjí a kolik stál proud. Node-RED flow funguje spolehlivě přes rok bez problémů.</q>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">📱</div>
+          <div>
+            <div class="testimonial-name">Tomáš H.</div>
+            <div class="testimonial-meta">Pro balíček, 12 kWp, Středočeský kraj</div>
+          </div>
+        </div>
+        <div class="testimonial-saving">Úspora cca 31 000 Kč / rok</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- QUIZ -->
+<div class="quiz-bg" id="quiz">
+  <div class="quiz-wrap">
+    <div class="quiz-box">
+      <div class="quiz-header">
+        <div class="quiz-icon">🎯</div>
+        <h2>Jaký balíček je pro vás?</h2>
+        <p>Odpovězte na 4 otázky a doporučíme vám přesně to, co vaše instalace potřebuje.</p>
+      </div>
+
+      <div class="quiz-progress-bar"><div class="quiz-progress-fill" id="quiz-bar" style="width:0%"></div></div>
+
+      <!-- Krok 1 -->
+      <div class="quiz-step active" id="step-1">
+        <div class="quiz-q">1 / 4 &nbsp;·&nbsp; Co aktuálně máte?</div>
+        <div class="quiz-options">
+          <div class="quiz-option" data-step="1" data-value="fve">
+            <span class="opt-icon">☀️</span>
+            <div><div class="opt-label">Pouze FVE</div><div class="opt-desc">Fotovoltaika bez baterie</div></div>
+          </div>
+          <div class="quiz-option" data-step="1" data-value="fve-bat">
+            <span class="opt-icon">🔋</span>
+            <div><div class="opt-label">FVE + baterie (Victron ESS)</div><div class="opt-desc">Cerbo GX nebo Venus GX</div></div>
+          </div>
+          <div class="quiz-option" data-step="1" data-value="fve-bat-ev">
+            <span class="opt-icon">🚗</span>
+            <div><div class="opt-label">FVE + baterie + elektromobil</div><div class="opt-desc">Chci nabíjet z přebytků FVE</div></div>
+          </div>
+          <div class="quiz-option" data-step="1" data-value="nevim">
+            <span class="opt-icon">🤔</span>
+            <div><div class="opt-label">Ještě to plánuji / nevím</div><div class="opt-desc">Teprve se rozhoduji nebo vybírám systém</div></div>
+          </div>
+        </div>
+        <div class="quiz-nav">
+          <span></span>
+          <button class="btn-quiz-next" id="next-1" disabled onclick="nextStep(1)">Další →</button>
+        </div>
+      </div>
+
+      <!-- Krok 2 -->
+      <div class="quiz-step" id="step-2">
+        <div class="quiz-q">2 / 4 &nbsp;·&nbsp; Proč chcete automatizaci?</div>
+        <div class="quiz-options">
+          <div class="quiz-option" data-step="2" data-value="save">
+            <span class="opt-icon">💰</span>
+            <div><div class="opt-label">Chci ušetřit na elektřině</div><div class="opt-desc">Nakoupit levně, prodat draho</div></div>
+          </div>
+          <div class="quiz-option" data-step="2" data-value="comfort">
+            <span class="opt-icon">🛋️</span>
+            <div><div class="opt-label">Nechci nic řešit manuálně</div><div class="opt-desc">Systém ať se stará sám</div></div>
+          </div>
+          <div class="quiz-option" data-step="2" data-value="optimize">
+            <span class="opt-icon">📈</span>
+            <div><div class="opt-label">Chci vytěžit maximum z FVE</div><div class="opt-desc">Přebytky, přetoky, optimalizace</div></div>
+          </div>
+          <div class="quiz-option" data-step="2" data-value="all">
+            <span class="opt-icon">⚡</span>
+            <div><div class="opt-label">Všechno dohromady</div><div class="opt-desc">Úspora + komfort + optimalizace</div></div>
+          </div>
+        </div>
+        <div class="quiz-nav">
+          <button class="btn-quiz-back" onclick="prevStep(2)">← Zpět</button>
+          <button class="btn-quiz-next" id="next-2" disabled onclick="nextStep(2)">Další →</button>
+        </div>
+      </div>
+
+      <!-- Krok 3 -->
+      <div class="quiz-step" id="step-3">
+        <div class="quiz-q">3 / 4 &nbsp;·&nbsp; Co chcete ovládat automaticky?</div>
+        <div class="quiz-options">
+          <div class="quiz-option" data-step="3" data-value="ess-only">
+            <span class="opt-icon">🔋</span>
+            <div><div class="opt-label">Jen baterii (ESS strategie)</div><div class="opt-desc">Nabíjení / vybíjení podle cen</div></div>
+          </div>
+          <div class="quiz-option" data-step="3" data-value="relay">
+            <span class="opt-icon">🔌</span>
+            <div><div class="opt-label">Relé — bojler nebo tepelné čerpadlo</div><div class="opt-desc">Zapnutí v levných hodinách nebo z přebytků</div></div>
+          </div>
+          <div class="quiz-option" data-step="3" data-value="ev">
+            <span class="opt-icon">🚗</span>
+            <div><div class="opt-label">Wallbox / nabíjení elektromobilu</div><div class="opt-desc">Z přebytků FVE nebo v noci za spot</div></div>
+          </div>
+          <div class="quiz-option" data-step="3" data-value="all">
+            <span class="opt-icon">🏠</span>
+            <div><div class="opt-label">Vše — baterie + relé + EV</div><div class="opt-desc">Kompletní automatizace domácnosti</div></div>
+          </div>
+        </div>
+        <div class="quiz-nav">
+          <button class="btn-quiz-back" onclick="prevStep(3)">← Zpět</button>
+          <button class="btn-quiz-next" id="next-3" disabled onclick="nextStep(3)">Další →</button>
+        </div>
+      </div>
+
+      <!-- Krok 4 -->
+      <div class="quiz-step" id="step-4">
+        <div class="quiz-q">4 / 4 &nbsp;·&nbsp; Jak moc chcete být v obraze?</div>
+        <div class="quiz-options">
+          <div class="quiz-option" data-step="4" data-value="set-forget">
+            <span class="opt-icon">😌</span>
+            <div><div class="opt-label">Nastavit a zapomenout</div><div class="opt-desc">Nechci sledovat, jen ušetřit</div></div>
+          </div>
+          <div class="quiz-option" data-step="4" data-value="overview">
+            <span class="opt-icon">📊</span>
+            <div><div class="opt-label">Chci přehled co systém dělá</div><div class="opt-desc">Dashboard, denní přehled</div></div>
+          </div>
+          <div class="quiz-option" data-step="4" data-value="control">
+            <span class="opt-icon">🎛️</span>
+            <div><div class="opt-label">Chci plnou kontrolu a monitoring</div><div class="opt-desc">Appka, notifikace, statistiky</div></div>
+          </div>
+        </div>
+        <div class="quiz-nav">
+          <button class="btn-quiz-back" onclick="prevStep(4)">← Zpět</button>
+          <button class="btn-quiz-next" id="next-4" disabled onclick="showResult()">Zobrazit doporučení →</button>
+        </div>
+      </div>
+
+      <!-- Výsledek -->
+      <div class="quiz-result" id="quiz-result">
+        <div class="result-badge" id="result-badge"></div>
+        <div class="result-price-wrap">
+          <span class="result-price" id="result-price"></span>
+        </div>
+        <div class="result-recur" id="result-recur"></div>
+        <h3 id="result-title"></h3>
+        <p id="result-desc"></p>
+        <ul class="result-features" id="result-features"></ul>
+        <a class="btn-primary" href="#kontakt" id="result-cta">Mám zájem — napsat →</a>
+        <button class="btn-quiz-restart" onclick="restartQuiz()">Zkusit znovu</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- NODE-RED PRICING -->
+<section class="section" id="node-red">
+  <span class="section-tag">Node-RED služby</span>
+  <h2 class="section-title">Implementace na míru</h2>
+  <p class="section-sub">Každá instalace je jiná. Nejdřív zjistíme vaše potřeby, pak implementujeme flow přesně pro váš systém.</p>
+  <div class="pricing-grid">
+    <div class="pricing-card">
+      <div class="pricing-name">Basic</div>
+      <div class="pricing-price">2 900 <span class="cur">Kč</span></div>
+      <div class="pricing-recur">jednorázový poplatek · bez měsíčních nákladů</div>
+      <p class="pricing-desc">Základní optimalizace ESS podle spotových cen. Ideální jako první krok k automatizaci.</p>
+      <ul class="pricing-features">
+        <li>ESS optimalizace podle spotových cen OTE-CR</li>
+        <li>Automatické povolení / blokování přetoků</li>
+        <li>Plánování nákupu v levných hodinách</li>
+        <li>JSON flow pro import do Cerbo GX</li>
+        <li>PDF průvodce nastavením</li>
+        <li>Email podpora 30 dní</li>
+      </ul>
+      <a class="btn-plan btn-plan-outline" href="#kontakt">Mám zájem</a>
+    </div>
+    <div class="pricing-card featured">
+      <div class="pricing-badge">Nejoblíbenější</div>
+      <div class="pricing-name">Medium</div>
+      <div class="pricing-price">4 900 <span class="cur">Kč</span></div>
+      <div class="pricing-recur">jednorázový poplatek · bez měsíčních nákladů</div>
+      <p class="pricing-desc">Basic + automatizace relé pro bojler, tepelné čerpadlo nebo nabíjení EV z přebytků FVE.</p>
+      <ul class="pricing-features">
+        <li>Vše z Basic balíčku</li>
+        <li>Automatizace relé 1 a 2 (bojler, TČ, EV)</li>
+        <li>Nabíjení EV z přebytků FVE</li>
+        <li>Konfigurace pro vaši konkrétní instalaci</li>
+        <li>Vzdálená asistence při instalaci</li>
+        <li>Email podpora 90 dní</li>
+      </ul>
+      <a class="btn-plan btn-plan-primary" href="#kontakt">Mám zájem</a>
+    </div>
+    <div class="pricing-card">
+      <div class="pricing-name">Pro</div>
+      <div class="pricing-price">4 900 <span class="cur">Kč</span></div>
+      <div class="pricing-recur">jednorázově <strong>+ 299 Kč / měsíc</strong> za MH Energy App</div>
+      <p class="pricing-desc">Kompletní řešení s přístupem do MH Energy App, monitoringem v reálném čase a prioritní podporou.</p>
+      <ul class="pricing-features">
+        <li>Vše z Medium balíčku</li>
+        <li>Přístup do MH Energy App</li>
+        <li>Monitoring ESS v reálném čase</li>
+        <li>Automatické aktualizace flow</li>
+        <li>Prioritní podpora — přímý kontakt</li>
+        <li>Roční přehled úspor</li>
+      </ul>
+      <a class="btn-plan btn-plan-outline" href="#kontakt">Mám zájem</a>
+    </div>
+  </div>
+  <p style="text-align:center; margin-top:28px; font-size:.85rem; color:var(--text3);">
+    Nevíte který balíček? <a href="#quiz" style="color:var(--amber); text-decoration:none; font-weight:600;">Vyplňte dotazník</a> nebo nám <a href="#kontakt" style="color:var(--amber); text-decoration:none; font-weight:600;">napište přímo</a>.
   </p>
-  <p style="margin-top:10px">Data: OTE-CR · Energy-Charts (Fraunhofer ISE) · Kurz CZK: ČNB</p>
+</section>
+
+<!-- CTA STRIP #3 — after pricing -->
+<div class="cta-strip">
+  <p>Nezávazná konzultace zdarma — zjistíme co vaše instalace potřebuje a doporučíme řešení.</p>
+  <div class="strip-btns">
+    <a class="btn-primary" href="#kontakt">Nezávazně napsat →</a>
+  </div>
+</div>
+
+<!-- API -->
+<div class="api-bg">
+  <section class="section" id="api">
+    <div class="api-grid">
+      <div>
+        <span class="section-tag">Volné API</span>
+        <h2 class="section-title">Pro vývojáře a kutily</h2>
+        <p class="section-sub">REST endpointy bez registrace a API klíče. Aktualizace každých 5 minut. Použijte v Home Assistantu, Node-RED nebo Pythonu.</p>
+        <a class="btn-outline" href="/cenySpotEU/" style="display:inline-block; margin-top:8px;">Kompletní dokumentace →</a>
+      </div>
+      <div class="api-endpoints">
+        <div class="endpoint">
+          <span class="method">GET</span>
+          <span class="path">/api/eu-prices?country=cz</span>
+          <span class="edesc">CZ spot ceny</span>
+        </div>
+        <div class="endpoint">
+          <span class="method">GET</span>
+          <span class="path">/api/eu-prices?country=de</span>
+          <span class="edesc">DE, AT, PL, HU, FR</span>
+        </div>
+        <div class="endpoint">
+          <span class="method">GET</span>
+          <span class="path">/api/ceny</span>
+          <span class="edesc">CZ ceny v Kč (OTE-CR)</span>
+        </div>
+        <div class="endpoint">
+          <span class="method">GET</span>
+          <span class="path">/api/eu-prices?format=level</span>
+          <span class="edesc">low / medium / high</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- FAQ -->
+<section class="section">
+  <span class="section-tag">FAQ</span>
+  <h2 class="section-title">Časté otázky</h2>
+  <p class="section-sub">Vše co vás zajímá před rozhodnutím.</p>
+  <div class="faq-list">
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">Musím mít Cerbo GX, nebo stačí Venus GX?</button>
+      <div class="faq-a">Node-RED flow funguje na obou zařízeních — Cerbo GX i Venus GX (nebo Venus GX na Raspberry Pi). Stačí, aby zařízení podporovalo Node-RED jako plugin. Při objednávce nám napište jaký model máte a vše přizpůsobíme.</div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">Jak probíhá implementace — musím k vám jet?</button>
+      <div class="faq-a">Vše probíhá vzdáleně. Pošleme vám hotový JSON flow, který importujete do Node-RED přes webové rozhraní Cerbo GX. K tomu dostanete PDF průvodce s fotografiemi každého kroku. U Medium a Pro balíčku navíc poskytujeme vzdálenou asistenci přes video hovor nebo chat.</div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">Co se stane pokud API OTE-CR selže nebo přijdou špatná data?</button>
+      <div class="faq-a">Node-RED flow má záložní strategii pro případ výpadku API. Systém přejde do bezpečného módu — baterie se nabíjí v nočních hodinách (0–6h) bez ohledu na ceny. Chybný stav je logován a při Pro balíčku dostanete notifikaci do appky.</div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">Proč spotový tarif — vyplatí se mi?</button>
+      <div class="faq-a">Spotový tarif se vyplatí pokud máte ESS (baterii), protože baterie nakupuje elektřinu v levných hodinách (0,5–1 Kč/kWh v noci) a šetří ji na drahé hodiny (2–4 Kč/kWh večer). Bez baterie je spotový tarif rizikový. Použijte naši <a href="/kalkulator.html" style="color:var(--amber);">kalkulačku úspory</a> pro konkrétní čísla.</div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">Je API opravdu zdarma a bez registrace?</button>
+      <div class="faq-a">Ano. Endpointy /api/eu-prices a /api/ceny jsou veřejné, bez API klíče a bez limitu pro běžné použití. Data z Energy-Charts (Fraunhofer ISE) a OTE-CR jsou bezplatně dostupná — jen je zpracujeme a připravíme ve formátu pro Home Assistant a Node-RED.</div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">Co je součástí měsíčního poplatku 299 Kč u Pro balíčku?</button>
+      <div class="faq-a">Měsíční poplatek 299 Kč zahrnuje přístup do MH Energy App (PWA), monitoring ESS v reálném čase, automatické aktualizace Node-RED flow (nové funkce, opravy, úpravy pro změny OTE-CR API) a prioritní podporu přímým kontaktem. Jednorázový poplatek 4 900 Kč je za implementaci — platí se jen jednou.</div>
+    </div>
+  </div>
+</section>
+
+<!-- BLOG -->
+<section class="section" style="padding-top:0;">
+  <span class="section-tag">Blog</span>
+  <h2 class="section-title">Reálné zkušenosti</h2>
+  <p class="section-sub">Bez marketingu. S čísly z reálného provozu — 10 kWp, 10 kWh Victron ESS a elektromobil.</p>
+  <div class="blog-grid">
+    <a class="blog-card" href="/blog/nase-fve-jak-to-cele-zacalo.html">
+      <div class="blog-icon">☀️</div>
+      <h4>Naše FVE — jak to celé začalo a co bychom dělali jinak</h4>
+      <p>10 kWp, baterie Victron, elektromobil. Cesta od prvního výpočtu k reálnému provozu.</p>
+      <span class="blog-meta">8 min · Květen 2026</span>
+    </a>
+    <a class="blog-card" href="/blog/baterie-jeden-rok.html">
+      <div class="blog-icon">🔋</div>
+      <h4>Baterie Victron po roce provozu — kolik vydělala?</h4>
+      <p>Kompletní roční přehled: 3 840 kWh prošlo baterií, úspora přes 24 000 Kč.</p>
+      <span class="blog-meta">7 min · Březen 2026</span>
+    </a>
+    <a class="blog-card" href="/blog/spotova-cena-co-to-je.html">
+      <div class="blog-icon">📊</div>
+      <h4>Spotová cena elektřiny — co to je a proč na ní záleží</h4>
+      <p>Jednoduchý průvodce pro každého majitele FVE. Kdy se spotový tarif vyplatí a kdy ne.</p>
+      <span class="blog-meta">6 min · Duben 2026</span>
+    </a>
+  </div>
+  <div style="text-align:center; margin-top:32px;">
+    <a class="btn-outline" href="/blog/">Všechny články →</a>
+  </div>
+</section>
+
+<!-- CTA (kontakt) -->
+<section class="cta-section" id="kontakt">
+  <h2>Zjistěte vaši úsporu zdarma</h2>
+  <p>Napište nám — zdarma zjistíme co vaše instalace potřebuje a doporučíme nejlepší řešení. Odpovídáme do 24 hodin.</p>
+  <div class="email-form">
+    <div class="email-row">
+      <input type="email" class="email-input" id="cta-email" placeholder="vas@email.cz" autocomplete="email">
+      <button class="btn-sub" onclick="handleEmailSubmit()">Odeslat →</button>
+    </div>
+    <p class="cta-note">Odesláním souhlasíte se zpracováním e-mailu za účelem zodpovězení dotazu. Bez spamu, kdykoli odhlásit.</p>
+    <div class="cta-success" id="cta-success">
+      ✓ Skvěle! Ozveme se vám do 24 hodin. Mezitím se podívejte na naši <a href="/kalkulator.html" style="color:var(--green);">kalkulačku úspory</a>.
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div class="logo">⚡ SpotCeny</div>
+        <p>Spotové ceny, automatizace ESS a Node-RED implementace pro majitele Victron FVE systémů.</p>
+      </div>
+      <div class="footer-col">
+        <h5>Nástroje</h5>
+        <a href="/cenySpotEU/">EU Spotové ceny</a>
+        <a href="/ceny.html">CZ ceny v Kč</a>
+        <a href="/kalkulator.html">Kalkulačka úspory</a>
+        <a href="#api">Volné API</a>
+      </div>
+      <div class="footer-col">
+        <h5>Služby</h5>
+        <a href="#node-red">Basic balíček</a>
+        <a href="#node-red">Medium balíček</a>
+        <a href="#node-red">Pro balíček</a>
+        <a href="https://mh-energy-cwlj.vercel.app" target="_blank" rel="noopener noreferrer">MH Energy App</a>
+      </div>
+      <div class="footer-col">
+        <h5>Obsah</h5>
+        <a href="/blog/">Blog</a>
+        <a href="/blog/nase-fve-jak-to-cele-zacalo.html">Naše FVE</a>
+        <a href="/blog/node-red-automatizace.html">Node-RED guide</a>
+        <a href="/blog/spotova-cena-co-to-je.html">Co je spotová cena</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 SpotCeny · Data: OTE-CR, Energy-Charts (Fraunhofer ISE), ČNB</p>
+      <p>Vytvořeno v ČR pro majitele FVE</p>
+    </div>
+  </div>
 </footer>
+
+<script>
+  // ── HAMBURGER MENU ────────────────────────────────────
+  const hamburger = document.getElementById('hamburger');
+  const nav = document.getElementById('topbar-nav');
+  hamburger.addEventListener('click', () => {
+    const isOpen = nav.classList.toggle('mobile-open');
+    hamburger.classList.toggle('open', isOpen);
+    hamburger.setAttribute('aria-expanded', isOpen);
+  });
+  // Close menu on nav link click
+  nav.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => {
+      nav.classList.remove('mobile-open');
+      hamburger.classList.remove('open');
+      hamburger.setAttribute('aria-expanded', false);
+    });
+  });
+
+  // ── EMAIL FORM ────────────────────────────────────────
+  function handleEmailSubmit() {
+    const emailEl = document.getElementById('cta-email');
+    const email = emailEl.value.trim();
+    if (!email || !email.includes('@')) {
+      emailEl.style.borderColor = '#DC2626';
+      emailEl.focus();
+      return;
+    }
+    // Show success state
+    document.querySelector('.email-row').style.display = 'none';
+    document.querySelector('.cta-note').style.display = 'none';
+    document.getElementById('cta-success').style.display = 'block';
+    // Mailto fallback (opens mail client as backup channel)
+    setTimeout(() => {
+      window.location.href = `mailto:info@spotceny.cz?subject=Zájem%20o%20konzultaci&body=Email%3A%20${encodeURIComponent(email)}`;
+    }, 600);
+  }
+  // Allow Enter key in email input
+  document.getElementById('cta-email').addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleEmailSubmit();
+  });
+
+  // ── FAQ ───────────────────────────────────────────────
+  function toggleFaq(btn) {
+    const item = btn.closest('.faq-item');
+    const isOpen = item.classList.toggle('open');
+    // Close siblings
+    if (isOpen) {
+      document.querySelectorAll('.faq-item.open').forEach(el => {
+        if (el !== item) el.classList.remove('open');
+      });
+    }
+  }
+
+  // ── QUIZ ──────────────────────────────────────────────
+  const answers = {};
+
+  document.querySelectorAll('.quiz-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      const step = opt.dataset.step;
+      document.querySelectorAll(`[data-step="${step}"]`).forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      answers[step] = opt.dataset.value;
+      const btn = document.getElementById(`next-${step}`);
+      if (btn) btn.disabled = false;
+    });
+  });
+
+  function updateBar(step) {
+    document.getElementById('quiz-bar').style.width = (step / 4 * 100) + '%';
+  }
+
+  function nextStep(current) {
+    document.getElementById(`step-${current}`).classList.remove('active');
+    document.getElementById(`step-${current + 1}`).classList.add('active');
+    updateBar(current);
+  }
+
+  function prevStep(current) {
+    document.getElementById(`step-${current}`).classList.remove('active');
+    document.getElementById(`step-${current - 1}`).classList.add('active');
+    updateBar(current - 2);
+  }
+
+  function showResult() {
+    document.getElementById('step-4').classList.remove('active');
+    document.getElementById('quiz-result').classList.add('active');
+    updateBar(4);
+
+    const a1 = answers['1']; // fve / fve-bat / fve-bat-ev / nevim
+    const a2 = answers['2']; // save / comfort / optimize / all
+    const a3 = answers['3']; // ess-only / relay / ev / all
+    const a4 = answers['4']; // set-forget / overview / control
+
+    // Decision matrix — all 4 answers used
+    let plan = 'basic';
+
+    if (a4 === 'control') {
+      // Wants app + monitoring → Pro regardless of other answers
+      plan = 'pro';
+    } else if (a3 === 'all' && a4 !== 'set-forget') {
+      // Full automation AND wants visibility → Pro
+      plan = 'pro';
+    } else if (a3 === 'all' && a4 === 'set-forget') {
+      // Full automation but set-and-forget → Medium (no need for app)
+      plan = 'medium';
+    } else if (a1 === 'fve-bat-ev' || a3 === 'relay' || a3 === 'ev') {
+      // Has EV or wants relay/EV automation → Medium
+      plan = 'medium';
+    } else if (a4 === 'overview') {
+      // Wants dashboard overview → Medium
+      plan = 'medium';
+    } else if (a2 === 'all' || a2 === 'optimize') {
+      // Wants to maximize everything but doesn't need relay/EV → Medium is safer
+      plan = 'medium';
+    }
+    // else: save / comfort + ess-only + set-forget → Basic
+
+    const plans = {
+      basic: {
+        badge: 'Basic balíček',
+        badgeClass: 'basic',
+        price: '2 900 Kč',
+        recur: 'jednorázový poplatek · bez měsíčních nákladů',
+        title: 'Základní optimalizace ESS je pro vás ideální',
+        desc: 'Na základě vašich odpovědí doporučujeme Basic balíček. Nastavíme automatické nabíjení baterie v levných hodinách a optimalizaci přetoků — bez nutnosti řešit cokoliv ručně.',
+        features: ['ESS optimalizace podle spotových cen', 'Automatické povolení / blokování přetoků', 'Plánování nákupu v levných hodinách', 'JSON flow + PDF průvodce', 'Email podpora 30 dní'],
+        cta: 'Mám zájem o Basic →',
+      },
+      medium: {
+        badge: 'Medium balíček',
+        badgeClass: 'medium',
+        price: '4 900 Kč',
+        recur: 'jednorázový poplatek · bez měsíčních nákladů',
+        title: 'Medium balíček pokryje vše co potřebujete',
+        desc: 'Vaše instalace potřebuje víc než jen ESS optimalizaci. Medium balíček přidá automatizaci relé pro bojler nebo tepelné čerpadlo a nabíjení elektromobilu z přebytků FVE.',
+        features: ['Vše z Basic balíčku', 'Automatizace relé (bojler, TČ, EV)', 'Nabíjení EV z přebytků FVE', 'Konfigurace pro vaši instalaci', 'Vzdálená asistence + podpora 90 dní'],
+        cta: 'Mám zájem o Medium →',
+      },
+      pro: {
+        badge: 'Pro balíček',
+        badgeClass: 'pro',
+        price: '4 900 Kč',
+        recur: 'jednorázově + 299 Kč / měsíc za MH Energy App',
+        title: 'Pro balíček — kompletní řešení s monitoring appkou',
+        desc: 'Chcete mít přehled a plnou kontrolu. Pro balíček zahrnuje vše z Medium a navíc přístup do MH Energy App s dashboardem v reálném čase, statistikami a prioritní podporou.',
+        features: ['Vše z Medium balíčku', 'Přístup do MH Energy App (dashboard)', 'Monitoring ESS v reálném čase', 'Automatické aktualizace flow', 'Prioritní podpora + roční přehled úspor'],
+        cta: 'Mám zájem o Pro →',
+      },
+    };
+
+    const p = plans[plan];
+    document.getElementById('result-badge').textContent = p.badge;
+    document.getElementById('result-badge').className = `result-badge ${p.badgeClass}`;
+    document.getElementById('result-price').textContent = p.price;
+    document.getElementById('result-recur').textContent = p.recur;
+    document.getElementById('result-title').textContent = p.title;
+    document.getElementById('result-desc').textContent = p.desc;
+    document.getElementById('result-cta').textContent = p.cta;
+
+    const ul = document.getElementById('result-features');
+    ul.innerHTML = '';
+    p.features.forEach(f => {
+      const li = document.createElement('li');
+      li.textContent = f;
+      ul.appendChild(li);
+    });
+  }
+
+  function restartQuiz() {
+    document.getElementById('quiz-result').classList.remove('active');
+    document.getElementById('step-1').classList.add('active');
+    document.querySelectorAll('.quiz-option').forEach(o => o.classList.remove('selected'));
+    document.querySelectorAll('.btn-quiz-next').forEach(b => b.disabled = true);
+    Object.keys(answers).forEach(k => delete answers[k]);
+    updateBar(0);
+  }
+</script>
 
 </body>
 </html>
