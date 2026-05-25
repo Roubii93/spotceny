@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://mh-energy.vercel.app/sitemap.xml
